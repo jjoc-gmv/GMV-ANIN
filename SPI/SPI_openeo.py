@@ -21,6 +21,8 @@ precipitation_dc = connection.load_collection(
     bands=["precipitation-flux"],
 )
 precipitation_dc = precipitation_dc.aggregate_temporal_period("month", reducer="sum")
+
+
 # precipitation_dc = (precipitation_dc * 0.01)
 
 
@@ -110,7 +112,11 @@ def split_geojson_in_features(geojson):
 geojson = json.loads(mask_layer.to_json())
 geojson = split_geojson_in_features(geojson)
 
+with open("south_africa_mask.json", "w") as f:
+    json.dump(geojson, f, indent=2)
+
 precipitation_dc = precipitation_dc.filter_spatial(geojson)
+
 
 def load_udf(udf):
     """
