@@ -5,7 +5,8 @@ import openeo
 import geopandas as gpd
 
 # Possible backends: "openeo.cloud" "openeo.vito.be"
-connection = openeo.connect("openeo.cloud").authenticate_oidc()
+url = "https://openeo-dev.vito.be"
+connection = openeo.connect(url).authenticate_oidc()
 now = datetime.datetime.now()
 print(connection.root_url + " time: " + str(now))
 
@@ -21,6 +22,12 @@ precipitation_dc = connection.load_collection(
     bands=["precipitation-flux"],
 )
 precipitation_dc = precipitation_dc.aggregate_temporal_period("month", reducer="sum")
+
+# Linearly interpolate missing values. To avoid protobuf error.
+precipitation_dc = precipitation_dc.apply_dimension(
+    dimension="t",
+    process="array_interpolate_linear",
+)
 
 
 # precipitation_dc = (precipitation_dc * 0.01)
@@ -122,12 +129,19 @@ def load_udf(udf):
     """
     UDF: User Defined Function
     """
-    with open(udf, 'r+', encoding="utf8") as f:
-        return f.read()
+    with open(udf, 'r+', encoding="utf8") as fs:
+        return fs.read()
 
 
 udf_code = load_udf("SPI_UDF.py")
-precipitation_dc = precipitation_dc.apply_dimension(code=udf_code, runtime="Python")
+# udf_code = """
+# from openeo.udf import XarrayDataCube
+# def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
+#     # return cube
+#     array = cube.get_array()
+#     return XarrayDataCube(array)
+# """
+precipitation_dc = precipitation_dc.apply_dimension(dimension="t", code=udf_code, runtime="Python")
 
 from pathlib import Path
 
@@ -135,13 +149,21 @@ output_dir = Path("out-" + str(now).replace(":", "_"))
 output_dir.mkdir(parents=True, exist_ok=True)
 precipitation_dc.print_json(file=output_dir / "process_graph.json", indent=2)
 
-precipitation_dc.download("SPI_monthly.nc")
+# precipitation_dc.download("SPI_monthly.nc")
 
-# job = precipitation_dc.execute_batch(
-#     title=os.path.basename(__file__),
-#     # filename_prefix="SPI",
-#     format="GTiff",
-# )
-# job.get_results().download_files(output_dir)
+with open(__file__, 'r') as file:
+    job_description = "now: " + str(now) + " url: " + url + "\n\n"
+    job_description += "python code: \n\n\n```python\n" + file.read() + "\n```"
+
+job = precipitation_dc.execute_batch(
+    title=os.path.basename(__file__),
+    # format="GTiff",
+    format="NetCDF",
+    description=job_description,
+    job_options={"executor-memory": "10g"},
+)
+job.get_results().download_files(output_dir)
 
 print("End time: " + str(datetime.datetime.now()))
+
+os.system('spd-say "Program terminated"')  # vocal feedback

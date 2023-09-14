@@ -25,13 +25,16 @@ periodicity = climate_indices.compute.Periodicity.monthly  # Fixed
 if calibration_year_final - calibration_year_initial <= 2:
     print("Gamma correction in SPI on only 2 years will give bad looking results")
 
-crs_project = rasterio.crs.CRS.from_epsg(4326)
-
 _log = logging.getLogger("vegetation_water_indices")
 
 
+# _log.warning("spi_wrapped(...) os.environ.get('GDAL_DATA'): " + str(os.environ.get('GDAL_DATA')))  # /opt/venv/lib64/python3.8/site-packages/rasterio/gdal_data
+
+# crs_project = rasterio.crs.CRS.from_epsg(4326)
+
+
 def spi_wrapped(values: np.ndarray):
-    _log.warning("spi_wrapped(...) values.shape: " + str(values.shape))
+    # _log.warning("spi_wrapped(...) values.shape: " + str(values.shape))
     ret = indices.spi(
         values=values,
         scale=scale,
@@ -42,7 +45,7 @@ def spi_wrapped(values: np.ndarray):
         periodicity=periodicity,
     )
     ret = ret[np.newaxis].T
-    _log.warning("spi_wrapped(...) values.shape: " + str(values.shape) + " ret.shape: " + str(ret.shape))
+    # _log.warning("spi_wrapped(...) values.shape: " + str(values.shape) + " ret.shape: " + str(ret.shape))
     # print("spi_wrapped(...) values.shape: " + str(values.shape) + " ret.shape: " + str(ret.shape))
     return ret
 
@@ -88,13 +91,16 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     array = cube.get_array()
 
     data_grouped = proccessingNETCDF(array)
-    spi_values = xr.apply_ufunc(spi_wrapped,
-                                data_grouped,
-                                # input_core_dims=[["t"]],
-                                # output_core_dims=[["t"]],
-                                )
+    spi_results = xr.apply_ufunc(spi_wrapped,
+                                 data_grouped,
+                                 # input_core_dims=[["t"]],
+                                 # output_core_dims=[["t"]],
+                                 )
 
-    spi_results = spi_values.unstack('point')
+    # spi_results = spi_results.expand_dims(dim={"bands": 1})
+    BAND_NAME = 'SPI'
+    spi_results = spi_results.expand_dims(dim='bands', axis=0).assign_coords(bands=[BAND_NAME])
+    spi_results = spi_results.unstack('point')
     spi_results = spi_results.rename({'y': 'lat', 'x': 'lon'})  # Necessary step
     spi_results = spi_results.reindex(lat=list(reversed(spi_results['lat'])))
     spi_results = spi_results.rename({'lat': 'y', 'lon': 'x'})

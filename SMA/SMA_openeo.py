@@ -33,7 +33,7 @@ cube = cube.filter_bbox(
     north=-20,
 )
 cube = cube.filter_temporal([start, end])
-cube = cube.aggregate_temporal_period("month", reducer="sum")
+cube = cube.aggregate_temporal_period("month", reducer="mean")
 
 # graph.print_json(file=os.path.join(out_path, "datacube_print_json.json"))
 job = connection.create_job(
