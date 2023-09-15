@@ -49,6 +49,8 @@ sd_band = FAPAR_dc.reduce_temporal("sd").band(band)
 FAPAR_anomaly_dc = difference_band.merge_cubes(sd_band, overlap_resolver="divide")
 # FAPAR_anomaly_dc = FAPAR_anomaly_dc.rename_labels('bands', ['FAPAR_anomaly'])
 
+
+
 # Test in between values:
 # FAPAR_dc.reduce_temporal("mean").download("mean.nc")
 # FAPAR_dc.reduce_temporal("min").download("min.nc")

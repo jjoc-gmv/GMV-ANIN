@@ -123,28 +123,40 @@ def load_udf(udf):
 
 
 def custom_execute_batch(datacube):
-    with open(sys._getframe(0).f_globals.get('__file__'), 'r') as file:
-        job_description = "now: " + str(now) + " url: " + connection.root_url + "\n\n"
-        job_description += "python code: \n\n\n```python\n" + file.read() + "\n```"
+    try:
+        import inspect
+        parent_filename = inspect.stack()[1].filename
 
-    output_dir = Path("out-" + str(now).replace(":", "_"))
-    output_dir.mkdir(parents=True, exist_ok=True)
-    datacube.print_json(file=output_dir / "process_graph.json", indent=2)
-    # datacube.download("SPI_monthly.nc")
-    job = datacube.execute_batch(
-        title=os.path.basename(__file__),
-        format="GTiff",
-        # format="NetCDF",
-        description=job_description,
-        job_options={"executor-memory": "10g"},
-    )
-    with open(os.path.join(output_dir, "job_id.txt"), mode="w") as f:
-        f.write(job.job_id)
-    job.get_results().download_files(output_dir)
+        with open(parent_filename, 'r') as file:
+            job_description = "now: " + str(now) + " url: " + connection.root_url + "\n\n"
+            job_description += "python code: \n\n\n```python\n" + file.read() + "\n```"
 
-    with open(os.path.join(output_dir, "logs.json"), "w") as f:
-        json.dump(job.logs(), f, indent=2)
+        output_dir = Path("out-" + str(now).replace(":", "_").replace(" ", "_"))
+        output_dir.mkdir(parents=True, exist_ok=True)
+        datacube.print_json(file=output_dir / "process_graph.json", indent=2)
+        print(str(output_dir.absolute()) + "/")
+        # datacube.download("SPI_monthly.nc")
+        job = datacube.create_job(
+            title=os.path.basename(parent_filename),
+            format="GTiff",
+            # format="NetCDF",
+            description=job_description,
+            job_options={"executor-memory": "10g"},
+        )
+        with open(output_dir / "job_id.txt", mode="w") as f:
+            f.write(job.job_id)
+        job.start_and_wait()
+        job.get_results().download_files(output_dir)
 
-    print("custom_execute_batch end time: " + str(datetime.datetime.now()))
+        with open(output_dir / "logs.json", "w") as f:
+            json.dump(job.logs(), f, indent=2)
 
-    os.system('spd-say "Program terminated"')  # vocal feedback
+        os.system('spd-say "Program terminated"')  # vocal feedback
+    except KeyboardInterrupt:
+        # No audio when user manually stops program
+        pass
+    except:
+        os.system('spd-say "Program failed"')  # vocal feedback
+        raise
+    finally:
+        print("custom_execute_batch end time: " + str(datetime.datetime.now()))

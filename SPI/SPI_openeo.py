@@ -30,10 +30,17 @@ SPI_dc = SPI_dc.rename_labels('bands', ['SPI'])
 
 # SPI_dc = (SPI_dc * 0.01) # Scaling has no impact on Z-score
 
-udf_code = load_udf(os.path.join(os.path.dirname(__file__), "SPI_UDF.py"))
-SPI_dc = SPI_dc.apply_dimension(dimension="t", code=udf_code, runtime="Python")
+UDF_code = load_udf(os.path.join(os.path.dirname(__file__), "SPI_UDF.py"))
+SPI_dc = SPI_dc.apply_dimension(dimension="t", code=UDF_code, runtime="Python")
+
+previous_month_UDF_code = load_udf(os.path.join(os.path.dirname(__file__), "previous_month_UDF.py"))
+SPI_previous_month_dc = SPI_dc.apply_dimension(dimension="t", code=previous_month_UDF_code, runtime="Python")
 
 if __name__ == "__main__":
     geojson = load_south_africa_geojson()
     SPI_dc = SPI_dc.filter_spatial(geojson)
+
+    SPI_dc = SPI_dc.filter_temporal("2021-01-01", "2023-07-01")
+    # SPI_dc = SPI_dc.date_shift(-1, "month")
+
     custom_execute_batch(SPI_dc)

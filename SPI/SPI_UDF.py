@@ -25,7 +25,7 @@ periodicity = climate_indices.compute.Periodicity.monthly  # Fixed
 if calibration_year_final - calibration_year_initial <= 2:
     print("Gamma correction in SPI on only 2 years will give bad looking results")
 
-_log = logging.getLogger("vegetation_water_indices")
+_log = logging.getLogger("python_UDF")
 
 
 # _log.warning("spi_wrapped(...) os.environ.get('GDAL_DATA'): " + str(os.environ.get('GDAL_DATA')))  # /opt/venv/lib64/python3.8/site-packages/rasterio/gdal_data
@@ -81,8 +81,7 @@ def proccessingNETCDF(data):
 
     # Giving the appropriate shape to da data
     data_grouped = data_precip_masked.stack(point=('y', 'x')).groupby('point')
-    print("""Data is prepared to serve
-         as input for the SPI index.""")
+    print("""Data is prepared to serve as input for the SPI index.""")
 
     return data_grouped
 
