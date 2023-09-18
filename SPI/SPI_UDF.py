@@ -105,3 +105,25 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     spi_results = spi_results.rename({'lat': 'y', 'lon': 'x'})
     # No need to specify crs here
     return XarrayDataCube(spi_results)
+
+
+if __name__ == "__main__":
+    # Test code:
+    import pandas as pd
+
+    d = [1.0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+         13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+         25, 26, 27, 28, 29, 30]
+    array = xr.DataArray(
+        data=d,
+        coords=pd.to_datetime(d),
+        dims=["t"],
+    )
+
+    # array = array)
+    array = array.expand_dims(dim='bands').assign_coords(bands=["band_name"])
+    array = array.expand_dims(dim='x')
+    array = array.expand_dims(dim='y')
+
+    ret = apply_datacube(XarrayDataCube(array), dict())
+    print(ret)

@@ -7,3 +7,4 @@ __pycache__
 *.output*
 *.aux.xml
 */.ipynb_checkpoints/
+*/out-*

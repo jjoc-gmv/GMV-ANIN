@@ -18,7 +18,7 @@ connection = get_connection()
 band = "FAPAR"
 FAPAR_dc = connection.load_collection(
     "CGLS_FAPAR300_V1_GLOBAL",
-    temporal_extent=["1990-01-01", "2100-01-01"],
+    temporal_extent=["2015-01-01", "2024-01-01"],  # This temporal extent ends up in the UDF, so keep small.
     # To avoid "No spatial filter could be derived to load this collection"
     # spatial_extent={  # South Africa. (filter_spatial() is good enough)
     #     "west": 10,
@@ -39,16 +39,27 @@ FAPAR_dc = connection.load_collection(
 FAPAR_dc = FAPAR_dc.resample_spatial(projection=4326,
                                      resolution=0.0089285714285 / 1000 * 400)  # based on 1km resolution
 FAPAR_dc = FAPAR_dc.aggregate_temporal_period("month", reducer="mean")
-FAPAR_dc = (FAPAR_dc * 0.01)
+# FAPAR_dc = (FAPAR_dc * 0.01) #
+#
+# # Formula:  = (current - median ) / SD
+# current_band = FAPAR_dc.band(band)
+# mean_band = FAPAR_dc.reduce_temporal("mean").band(band)  # TODO: mean needs to be calculated per month
+# difference_band = current_band.merge_cubes(mean_band, overlap_resolver="subtract")
+# sd_band = FAPAR_dc.reduce_temporal("sd").band(band)
+# FAPAR_anomaly_dc = difference_band.merge_cubes(sd_band, overlap_resolver="divide")
 
-# Formula:  = (current - median ) / SD
-current_band = FAPAR_dc.band(band)
-mean_band = FAPAR_dc.reduce_temporal("mean").band(band)  # TODO: mean needs to be calculated per month
-difference_band = current_band.merge_cubes(mean_band, overlap_resolver="subtract")
-sd_band = FAPAR_dc.reduce_temporal("sd").band(band)
-FAPAR_anomaly_dc = difference_band.merge_cubes(sd_band, overlap_resolver="divide")
 
-FAPAR_anomaly_dc = FAPAR_anomaly_dc.add_dimension("bands", "FAPAR_anomaly", type="bands")
+# Linearly interpolate missing values. To avoid protobuf error.
+FAPAR_dc = FAPAR_dc.apply_dimension(
+    dimension="t",
+    process="array_interpolate_linear",
+)
+# FAPAR_anomaly_dc = FAPAR_dc
+UDF_code = load_udf(os.path.join(os.path.dirname(__file__), "FAPAR_Anomaly_UDF.py"))
+# apply_dimension can use 13Gb+ memory.
+FAPAR_anomaly_dc = FAPAR_dc.apply_dimension(dimension="t", code=UDF_code, runtime="Python")
+FAPAR_anomaly_dc = FAPAR_anomaly_dc.rename_labels('bands', ['FAPAR_anomaly'])
+# FAPAR_anomaly_dc = FAPAR_anomaly_dc.add_dimension("bands", "FAPAR_anomaly", type="bands")
 
 # Test in between values:
 # FAPAR_dc.reduce_temporal("mean").download("mean.nc")
@@ -58,7 +69,10 @@ FAPAR_anomaly_dc = FAPAR_anomaly_dc.add_dimension("bands", "FAPAR_anomaly", type
 
 if __name__ == "__main__":
     # Select smaller period for performance. (Mean still needs to be calculated on larger period)
-    FAPAR_anomaly_dc = FAPAR_anomaly_dc.filter_temporal("2021-01-01", "2025-01-01")
+    FAPAR_anomaly_dc = FAPAR_anomaly_dc.filter_temporal("2021-01-01", "2023-01-01")
+
+    # geojson = load_south_africa_geojson()
+    # FAPAR_anomaly_dc = FAPAR_anomaly_dc.filter_spatial(geojson)
 
     FAPAR_anomaly_dc = FAPAR_anomaly_dc.filter_bbox({  # Johannes burg
         "west": 27,
@@ -67,4 +81,4 @@ if __name__ == "__main__":
         "north": -26,
     })
 
-    custom_execute_batch(FAPAR_anomaly_dc)
+    custom_execute_batch(FAPAR_anomaly_dc, job_options=heavy_job_options)

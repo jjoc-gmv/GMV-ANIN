@@ -11,6 +11,8 @@ merged_dc = merged_dc.merge(SPI_previous_month_dc)
 merged_dc = merged_dc.merge(SMA_dc)
 merged_dc = merged_dc.merge(FAPAR_anomaly_dc)
 
+merged_dc.resolution_merge(high_resolution_bands=['FAPAR_anomaly'],
+                           low_resolution_bands=['SPI', 'SMA', 'SPI_previous_month'])
 
 # Linearly interpolate missing values. To avoid protobuf error.
 # CDI_dc = CDI_dc.apply_dimension(
@@ -42,4 +44,4 @@ if __name__ == "__main__":
     #     "north": -26,
     # })
 
-    custom_execute_batch(CDI_dc)
+    custom_execute_batch(CDI_dc, job_options=heavy_job_options)

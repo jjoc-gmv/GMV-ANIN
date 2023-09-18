@@ -17,6 +17,7 @@ def get_connection():
     if connection is None:
         # Possible backends: "openeo.cloud" "openeo.vito.be"
         url = "https://openeo-dev.vito.be"
+        # url = "https://openeo.cloud"
         connection = openeo.connect(url).authenticate_oidc()
         print(connection.root_url + " time: " + str(now))
     return connection
@@ -122,7 +123,38 @@ def load_udf(udf):
         return fs.read()
 
 
-def custom_execute_batch(datacube):
+false = False
+true = True
+heavy_job_options = {
+    'driver-memory': '10G',
+    'driver-memoryOverhead': '5G',
+    'driver-cores': '1',
+    'executor-memory': '10G',
+    'executor-memoryOverhead': '5G',
+    'executor-cores': '1',
+    'executor-request-cores': '600m',
+    'max-executors': '22',
+    'executor-threads-jvm': '7',
+    "udf-dependency-archives": [
+        "https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/croptype_models/20230615T144208-24ts-hrlvlcc-v200.zip#tmp/model",
+        "https://artifactory.vgt.vito.be:443/auxdata-public/hrlvlcc/openeo-dependencies/cropclass-1.0.5-20230810T154836.zip#tmp/cropclasslib",
+        "https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/openeo-dependencies/vitocropclassification-1.4.0-20230619T091529.zip#tmp/vitocropclassification",
+        "https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/openeo-dependencies/hrl.zip#tmp/venv_static",
+
+        # 'https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/hrl-temp.zip#tmp/venv',
+        # 'https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/hrl.zip#tmp/venv_static',
+    ],
+    "logging-threshold": "debug",
+    "mount_tmp": false,  # or true
+    "goofys": "false",
+    "node_caching": true,
+    # "sentinel-hub": {
+    #     "client-alias": 'vito'
+    # },
+}
+
+
+def custom_execute_batch(datacube, job_options=None):
     try:
         import inspect
         parent_filename = inspect.stack()[1].filename
@@ -141,7 +173,8 @@ def custom_execute_batch(datacube):
             format="GTiff",
             # format="NetCDF",
             description=job_description,
-            job_options={"executor-memory": "10g"},
+            filename_prefix=os.path.basename(parent_filename).replace(".py", ""),
+            job_options=job_options,
         )
         with open(output_dir / "job_id.txt", mode="w") as f:
             f.write(job.job_id)
