@@ -14,7 +14,7 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     # Not sure if shifting one month or one day.
     array.shift(t=1)  # Probably uses NaN as filler value
     _log.warning("array.shape: " + str(array.shape))
-    _log.warning("array.data_vars: " + ", ".join(array.dims))
+    _log.warning("array.dims: " + ", ".join(array.dims))
 
     # num_days_month = array.t.dt.days_in_month
     # num_days_month = 30

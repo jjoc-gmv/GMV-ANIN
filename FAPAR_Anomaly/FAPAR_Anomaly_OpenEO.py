@@ -5,7 +5,7 @@ import datetime
 from openeo_utils.utils import *
 
 connection = get_connection()
-# Work in Progress Code...
+# TODO: Calculate averages on monthly basis.
 
 # Z-score stays the same when scaling all data points
 # import numpy as np
@@ -47,9 +47,8 @@ mean_band = FAPAR_dc.reduce_temporal("mean").band(band)  # TODO: mean needs to b
 difference_band = current_band.merge_cubes(mean_band, overlap_resolver="subtract")
 sd_band = FAPAR_dc.reduce_temporal("sd").band(band)
 FAPAR_anomaly_dc = difference_band.merge_cubes(sd_band, overlap_resolver="divide")
-# FAPAR_anomaly_dc = FAPAR_anomaly_dc.rename_labels('bands', ['FAPAR_anomaly'])
 
-
+FAPAR_anomaly_dc = FAPAR_anomaly_dc.add_dimension("bands", "FAPAR_anomaly", type="bands")
 
 # Test in between values:
 # FAPAR_dc.reduce_temporal("mean").download("mean.nc")
@@ -61,7 +60,11 @@ if __name__ == "__main__":
     # Select smaller period for performance. (Mean still needs to be calculated on larger period)
     FAPAR_anomaly_dc = FAPAR_anomaly_dc.filter_temporal("2021-01-01", "2025-01-01")
 
-    geojson = load_south_africa_geojson()
-    FAPAR_anomaly_dc = FAPAR_anomaly_dc.filter_spatial(geojson)
+    FAPAR_anomaly_dc = FAPAR_anomaly_dc.filter_bbox({  # Johannes burg
+        "west": 27,
+        "south": -27,
+        "east": 30,
+        "north": -26,
+    })
 
     custom_execute_batch(FAPAR_anomaly_dc)

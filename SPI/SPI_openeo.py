@@ -35,6 +35,7 @@ SPI_dc = SPI_dc.apply_dimension(dimension="t", code=UDF_code, runtime="Python")
 
 previous_month_UDF_code = load_udf(os.path.join(os.path.dirname(__file__), "previous_month_UDF.py"))
 SPI_previous_month_dc = SPI_dc.apply_dimension(dimension="t", code=previous_month_UDF_code, runtime="Python")
+SPI_previous_month_dc = SPI_previous_month_dc.rename_labels('bands', ['SPI_previous_month'])
 
 if __name__ == "__main__":
     geojson = load_south_africa_geojson()
