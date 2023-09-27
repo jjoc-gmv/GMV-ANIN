@@ -17,7 +17,7 @@ def get_connection():
     if connection is None:
         # Possible backends: "openeo.cloud" "openeo.vito.be"
         url = "https://openeo-dev.vito.be"
-        # url = "https://openeo.cloud"
+        # url = "https://openeo.cloud"  # TODO: Get more credits
         connection = openeo.connect(url).authenticate_oidc()
         print(connection.root_url + " time: " + str(now))
     return connection
@@ -115,6 +115,12 @@ def load_south_africa_geojson():
     return geojson
 
 
+def load_johannesburg_geojson():
+    containing_folder = Path(__file__).parent
+    with open(containing_folder / "johannesburg.json") as f:
+        return json.load(f)
+
+
 def load_udf(udf):
     """
     UDF: User Defined Function
@@ -156,12 +162,22 @@ heavy_job_options = {
 
 def custom_execute_batch(datacube, job_options=None):
     try:
+        # os.system('find . -type d -empty -delete')  # better run manually
         import inspect
-        parent_filename = inspect.stack()[1].filename
+        parent_filename = inspect.stack()[1].filename  # HACK!
 
         with open(parent_filename, 'r') as file:
             job_description = "now: " + str(now) + " url: " + connection.root_url + "\n\n"
-            job_description += "python code: \n\n\n```python\n" + file.read() + "\n```"
+            job_description += "python code: \n\n\n```python\n" + file.read() + "```\n\n"
+
+        try:
+            from git import Repo
+            repo = Repo(os.path.dirname(parent_filename), search_parent_directories=True)
+            job_description += "GIT URL: " + list(repo.remotes[0].urls)[0] + "\n\n"
+            job_description += "GIT branch: '" + repo.active_branch.name + "' commit: '" + repo.active_branch.commit.hexsha + "'\n\n"
+            job_description += "GIT changed files: " + ", ".join(map(lambda x: x.a_path, repo.index.diff(None))) + "\n"
+        except Exception as e:
+            print("Could not attach GIT info: " + str(e))
 
         output_dir = Path("out-" + str(now).replace(":", "_").replace(" ", "_"))
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -193,3 +209,8 @@ def custom_execute_batch(datacube, job_options=None):
         raise
     finally:
         print("custom_execute_batch end time: " + str(datetime.datetime.now()))
+
+
+if __name__ == "__main__":
+    get_connection()
+    custom_execute_batch(None)

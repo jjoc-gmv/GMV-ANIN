@@ -5,14 +5,12 @@ from SMA.SMA_openeo import SMA_dc
 from SPI.SPI_openeo import SPI_dc, SPI_previous_month_dc
 from openeo_utils.utils import *
 
-# TODO: Keep highest resulution, instead of lowest.
-merged_dc = SPI_dc
-merged_dc = merged_dc.merge(SPI_previous_month_dc)
-merged_dc = merged_dc.merge(SMA_dc)
-merged_dc = merged_dc.merge(FAPAR_anomaly_dc)
-
-merged_dc.resolution_merge(high_resolution_bands=['FAPAR_anomaly'],
-                           low_resolution_bands=['SPI', 'SMA', 'SPI_previous_month'])
+resolution = 0.00297619047619  # Original resolution
+resolution = resolution * 10
+merged_dc = SPI_dc.resample_spatial(resolution=resolution, projection=4326)
+merged_dc = merged_dc.merge_cubes(SPI_previous_month_dc)
+merged_dc = merged_dc.merge_cubes(SMA_dc)
+merged_dc = merged_dc.merge_cubes(FAPAR_anomaly_dc)
 
 # Linearly interpolate missing values. To avoid protobuf error.
 # CDI_dc = CDI_dc.apply_dimension(
@@ -31,17 +29,11 @@ CDI_dc = merged_dc.reduce_dimension(dimension="bands", reducer=PGNode(
 if __name__ == "__main__":
     year = 2021
     start = f"{year}/01/01"
-    end = f"{year + 2}/01/01"  # Big time range
+    end = f"{year + 2}/01/01"
     CDI_dc = CDI_dc.filter_temporal([start, end])
 
     geojson = load_south_africa_geojson()
+    # geojson = load_johannesburg_geojson()
     CDI_dc = CDI_dc.filter_spatial(geojson)
-
-    # CDI_dc = CDI_dc.filter_bbox({  # Johannes burg
-    #     "west": 27,
-    #     "south": -27,
-    #     "east": 30,
-    #     "north": -26,
-    # })
 
     custom_execute_batch(CDI_dc, job_options=heavy_job_options)

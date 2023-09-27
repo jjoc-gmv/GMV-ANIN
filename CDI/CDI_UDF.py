@@ -12,10 +12,6 @@ _log = logging.getLogger("CDI_UDF.py")
 def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     array = cube.get_array()
 
-    _log.warning("array.shape: " + str(array.shape))
-    _log.warning("array.dims: " + ", ".join(array.dims))
-    # _log.warning("repr(array): " + repr(array))
-
     SPI_band = array[0]
     SPI_previous_month_band = array[1]
     SMA_band = array[2]

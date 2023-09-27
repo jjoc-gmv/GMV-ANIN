@@ -19,6 +19,19 @@ SPI_dc = connection.load_collection(
     },
     bands=["precipitation-flux"],
 )
+#Getting the components
+es = get_es(Tmax, Tmin)
+ea = get_ea(Tdew)
+svpc = get_svpc(Tmean)
+psi_cnt = get_psi_cnt(P)
+
+#Calculation pet
+pet_mm = get_pet_mm(svpc, Rn, G, psi_cnt, Tmean, u2, es, ea)
+
+#Giving the appropriate shape to da data. Grouping
+pet_mm_grouped = pet_mm.stack(point=('y', 'x')).groupby('point')
+
+
 SPI_dc = SPI_dc.aggregate_temporal_period("month", reducer="sum")
 
 # Linearly interpolate missing values. To avoid protobuf error.
@@ -26,12 +39,12 @@ SPI_dc = SPI_dc.apply_dimension(
     dimension="t",
     process="array_interpolate_linear",
 )
+SPI_dc = SPI_dc.rename_labels('bands', ['SPI'])
 
 # SPI_dc = (SPI_dc * 0.01) # Scaling has no impact on Z-score
 
 UDF_code = load_udf(os.path.join(os.path.dirname(__file__), "SPI_UDF.py"))
 SPI_dc = SPI_dc.apply_dimension(dimension="t", code=UDF_code, runtime="Python")
-SPI_dc = SPI_dc.rename_labels('bands', ['SPI'])
 
 previous_month_UDF_code = load_udf(os.path.join(os.path.dirname(__file__), "previous_month_UDF.py"))
 SPI_previous_month_dc = SPI_dc.apply_dimension(dimension="t", code=previous_month_UDF_code, runtime="Python")

@@ -19,14 +19,15 @@ SMA_dc = SMA_dc.rename_labels('bands', ['SMA'])
 if __name__ == "__main__":
     year = 2021
     start = f"{year}/01/01"
-    end = f"{year + 10}/01/01"  # Big time range
+    end = f"{year + 2}/01/01"  # Big time range
     SMA_dc = SMA_dc.filter_temporal([start, end])
-    SMA_dc = SMA_dc.filter_bbox(
-        west=10,
-        south=-40,
-        east=40,
-        north=-20,
-    )
+    # SMA_dc = SMA_dc.filter_bbox(
+    #     west=10,
+    #     south=-40,
+    #     east=40,
+    #     north=-20,
+    # )
+    # TODO: Combining filter_bbox and filter_spatial can give stretching problems! Probably need to avoid load_disk_collection.
     geojson = load_south_africa_geojson()
     SMA_dc = SMA_dc.filter_spatial(geojson)
     custom_execute_batch(SMA_dc)
