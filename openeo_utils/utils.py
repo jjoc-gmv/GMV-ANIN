@@ -57,45 +57,12 @@ def select_shape(shpfile):
 
     # Convert the unioned polygon to a geopandas dataframe with a single row
     mask_polygon = gpd.GeoDataFrame(geometry=[unioned_polygon])
+    mask_polygon = mask_polygon.explode()  # OpenEO also prefers list of Polygons compared to a giant multipolygon
+    mask_polygon = mask_polygon.loc[mask_polygon.area > 0.0001]  # Remove tini islands
 
     print("""Mask created.""")
 
     return mask_polygon
-
-
-def split_geojson_in_features(geojson):
-    features = geojson["features"]
-    assert len(features) == 1
-    coordinates = features[0]["geometry"]["coordinates"]
-
-    ret_json = """
-    {
-  "type": "FeatureCollection",
-  "features": [
-        """
-    features = []
-    for c in coordinates:
-        feature_str = """
-        {
-      "id": "0",
-      "type": "Feature",
-      "properties": {},
-      "geometry": {
-        "type": "MultiPolygon",
-        "coordinates": [
-        """
-        feature_str += repr(c)
-        feature_str += """
-        ]
-      }
-    }
-        """
-        features.append(feature_str)
-    ret_json += ",\n".join(features)
-    ret_json += """
-  ]
-}"""
-    return json.loads(ret_json)
 
 
 def load_south_africa_geojson():
@@ -107,7 +74,6 @@ def load_south_africa_geojson():
     mask_layer = select_shape(shpfile)
 
     geojson = json.loads(mask_layer.to_json())
-    geojson = split_geojson_in_features(geojson)
 
     with open("south_africa_mask.json", "w") as f:
         json.dump(geojson, f, indent=2)

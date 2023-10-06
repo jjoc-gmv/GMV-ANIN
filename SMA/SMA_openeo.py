@@ -9,7 +9,8 @@ connection = get_connection()
 # inspired on https://git.vito.be/users/lippenss/repos/workspace/browse/2023/PEOPLE/udp-reduce_temporal.ipynb
 SMA_dc = connection.load_disk_collection(
     format="GTiff",
-    # TODO: Data was manually imported. Should be made realtime
+    # TODO: Should fetch realtime data
+    # Data was manually imported from https://edo.jrc.ec.europa.eu/gdo/php/index.php?id=2112
     glob_pattern="/data/users/Public/emile.sonneveld/SMA_layer/sma*_m_wld_*_t/sma*_m_wld_*_t.tif",
     options=dict(date_regex=r'.*_(\d{4})(\d{2})(\d{2})_t.tif'),
 )

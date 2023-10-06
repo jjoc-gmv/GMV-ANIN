@@ -9,7 +9,7 @@ connection = get_connection()
 band = "NDVI"
 NDVI_dc = connection.load_collection(
     "CGLS_NDVI_V3_GLOBAL",  # 1km resolution resolution, [1999, 2020]
-    temporal_extent=["2017-01-01", "2020-01-01"],  # This temporal extent ends up in the UDF, so keep small.
+    temporal_extent=["1999-01-01", "2020-01-01"],  # This temporal extent ends up in the UDF, so keep small.
     # To avoid "No spatial filter could be derived to load this collection"
     spatial_extent={  # South Africa
         "west": 10,
