@@ -2,6 +2,10 @@
 import numpy as np
 import pandas as pd
 import spei as si
+import scipy.stats as scs
+from shapely.geometry import Point
+import geopandas as gpd
+
 
 
 def sum_to_scale(
@@ -69,3 +73,44 @@ def compute_sgi(
         scaled_sgi = si.sgi(scaled_gwl_ts)
 
     return scaled_sgi
+
+def compute_ssfi(
+    timeseries:pd.Series,
+    scale: int,
+) -> pd.Series:
+    """bla"""
+    dates = timeseries.index.to_pydatetime()
+
+    if scale == 1:
+        z = scs.mstats.plotting_positions(timeseries,0,0)
+        ssi = (z - np.mean(z)) / np.std(z)
+        scaled_ssfi = pd.Series(data = ssi, index=dates)
+    else:
+        scaled_np = sum_to_scale(timeseries,scale)
+        scaled_np_unstacked = np.hsplit(scaled_np,1)
+        scaled_ts = np.vstack(scaled_np_unstacked).T
+        scaled_ts = pd.Series(data = scaled_ts.flatten(), index=dates)
+        z = scs.mstats.plotting_positions(scaled_ts,0,0)
+        ssi = (z - np.mean(z)) / np.std(z)
+        scaled_ssfi = pd.Series(data = ssi, index=dates)
+
+    return scaled_ssfi
+
+
+def average_index(df_latlon,shapefile,averaging_field):
+
+    # Convert the stations dataframe into a GeoDataFrame by specifying the geometry column with the coordinates:
+
+    geometry = [Point(xy) for xy in zip(df_latlon['Longitude'], df_latlon['Latitude'])]
+    stations_gdf = gpd.GeoDataFrame(df_latlon, geometry=geometry)
+
+    # Perform a spatial join between the polygons and the stations to determine which stations fall within each polygon:
+    stations_by_polygon = gpd.sjoin(shapefile, stations_gdf, how='inner', op='contains')
+
+    # Select the columns based on their numeric names
+    time_step_columns = [col for col in stations_by_polygon.columns if str(col).isdigit()]
+
+    # Group the stations by polygon and time step, and calculate the average for each group:
+    averaged_index = stations_by_polygon.groupby([averaging_field])[time_step_columns].mean()
+
+    return averaged_index
