@@ -11,6 +11,8 @@ connection = None
 
 now = datetime.datetime.now()
 
+containing_folder = Path(__file__).parent
+
 
 def get_connection():
     global connection
@@ -68,7 +70,7 @@ def select_shape(shpfile):
 def load_south_africa_geojson():
     # Load de shp
     # Once we decide the layer for each index it has to be fixed
-    shpfile = load_shape_file('../SPI/shape/CNTR_RG_01M_2020_4326.shp')
+    shpfile = load_shape_file(containing_folder / '../SPI/shape/CNTR_RG_01M_2020_4326.shp')
 
     # Create the mask layer
     mask_layer = select_shape(shpfile)
@@ -82,7 +84,6 @@ def load_south_africa_geojson():
 
 
 def load_johannesburg_geojson():
-    containing_folder = Path(__file__).parent
     with open(containing_folder / "johannesburg.json") as f:
         return json.load(f)
 

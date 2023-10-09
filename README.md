@@ -12,12 +12,11 @@ Run
 
 ```bash
 python3 -m pip install -r requirements.txt
-cd ..
-python3 -m drought-indices.CDI.CDI_openeo
-python3 -m drought-indices.FAPAR_Anomaly.FAPAR_Anomaly_openeo
-python3 -m drought-indices.SMA.SMA_openeo
-python3 -m drought-indices.SPI.SPI_openeo
-python3 -m drought-indices.VCI.VCI_openeo
+python3 -m CDI.CDI_openeo
+python3 -m FAPAR_Anomaly.FAPAR_Anomaly_openeo
+python3 -m SMA.SMA_openeo
+python3 -m SPI.SPI_openeo
+python3 -m VCI.VCI_openeo
 ```
 
 ## Notes
