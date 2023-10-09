@@ -1,15 +1,16 @@
-import os
-import json
 import openeo
-import datetime
 from openeo_utils.utils import *
 
 connection = get_connection()
 
 band = "NDVI"
 NDVI_dc = connection.load_collection(
-    "CGLS_NDVI_V3_GLOBAL",  # 1km resolution resolution, [1999, 2020]
-    temporal_extent=["1999-01-01", "2020-01-01"],  # This temporal extent ends up in the UDF, so keep small.
+    "CGLS_NDVI_V3_GLOBAL",  # 1km resolution, [1999, 2020]
+    # This temporal_extent ends up in the UDF, so keep small when testing.
+    temporal_extent=[
+        "1999-01-01",
+        "2020-01-01",
+    ],
     # To avoid "No spatial filter could be derived to load this collection"
     spatial_extent={  # South Africa
         "west": 10,
@@ -45,7 +46,7 @@ NDVI_dc = NDVI_dc.apply_dimension(
 
 UDF_code = load_udf(os.path.join(os.path.dirname(__file__), "VCI_UDF.py"))
 VCI_dc = NDVI_dc.apply_dimension(dimension="t", code=UDF_code, runtime="Python")
-VCI_dc = VCI_dc.rename_labels('bands', ['VCI'])
+VCI_dc = VCI_dc.rename_labels("bands", ["VCI"])
 
 if __name__ == "__main__":
     # Select smaller period for performance. (Min/Max still needs to be calculated on larger period)
