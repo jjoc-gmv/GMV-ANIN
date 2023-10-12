@@ -1,11 +1,14 @@
 import datetime
 import json
 import os
-import sys
 from pathlib import Path
 
 import geopandas as gpd
 import openeo
+import requests
+
+# Emile: Sometimes python hangs on IPv6 requests.
+requests.packages.urllib3.util.connection.HAS_IPV6 = False
 
 connection = None
 
@@ -17,9 +20,9 @@ containing_folder = Path(__file__).parent
 def get_connection():
     global connection
     if connection is None:
-        # Possible backends: "openeo.cloud" "openeo.vito.be"
-        url = "https://openeo-dev.vito.be"
-        # url = "https://openeo.cloud"  # TODO: Get more credits
+        # Possible backends:
+        # url = "https://openeo-dev.vito.be"
+        url = "https://openeo.cloud"
         connection = openeo.connect(url).authenticate_oidc()
         print(connection.root_url + " time: " + str(now))
     return connection
@@ -59,7 +62,10 @@ def select_shape(shpfile):
 
     # Convert the unioned polygon to a geopandas dataframe with a single row
     mask_polygon = gpd.GeoDataFrame(geometry=[unioned_polygon])
-    mask_polygon = mask_polygon.explode()  # OpenEO also prefers list of Polygons compared to a giant multipolygon
+
+    # OpenEO also prefers list of Polygons compared to a giant multipolygon
+    mask_polygon = mask_polygon.explode(index_parts=True)
+
     mask_polygon = mask_polygon.loc[mask_polygon.area > 0.0001]  # Remove tini islands
 
     print("""Mask created.""")
@@ -77,7 +83,7 @@ def load_south_africa_geojson():
 
     geojson = json.loads(mask_layer.to_json())
 
-    with open("south_africa_mask.json", "w") as f:
+    with open(containing_folder / "south_africa_mask.json", "w") as f:
         json.dump(geojson, f, indent=2)
 
     return geojson
@@ -146,7 +152,7 @@ def custom_execute_batch(datacube, job_options=None):
         except Exception as e:
             print("Could not attach GIT info: " + str(e))
 
-        output_dir = Path("out-" + str(now).replace(":", "_").replace(" ", "_"))
+        output_dir = Path(os.path.dirname(parent_filename),) / ("out-" + str(now).replace(":", "_").replace(" ", "_"))
         output_dir.mkdir(parents=True, exist_ok=True)
         datacube.print_json(file=output_dir / "process_graph.json", indent=2)
         print(str(output_dir.absolute()) + "/")
