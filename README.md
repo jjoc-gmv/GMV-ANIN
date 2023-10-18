@@ -1,17 +1,21 @@
 # Drought indices
 
-## Running some openEO code:
+## Installation:
 
 ```bash
 git clone https://git-ext.gmv.com/anin-external/drought-indices.git
 cd drought-indices
 git checkout openeo
+python3 -m pip install -r requirements.txt
 ```
 
-Run
+To install on CONDA: `conda install -c conda-forge openeo`
+
+More instructions here: https://open-eo.github.io/openeo-python-client/installation.html
+
+## Running:
 
 ```bash
-python3 -m pip install -r requirements.txt
 python3 -m CDI.CDI_openeo
 python3 -m FAPAR_Anomaly.FAPAR_Anomaly_openeo
 python3 -m SMA.SMA_openeo

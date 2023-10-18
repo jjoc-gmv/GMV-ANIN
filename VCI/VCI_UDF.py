@@ -14,15 +14,16 @@ def calculator_function(input_array: np.ndarray):
     for i in range(input_array.size):
         month = i % 12
         val = input_array.data[i]
-        if np.isnan(min_per_month[month]):
-            min_per_month[month] = val
-        else:
-            min_per_month[month] = min(min_per_month[month], val)
+        if not np.isnan(val):
+            if np.isnan(min_per_month[month]):
+                min_per_month[month] = val
+            else:
+                min_per_month[month] = min(min_per_month[month], val)
 
-        if np.isnan(max_per_month[month]):
-            max_per_month[month] = val
-        else:
-            max_per_month[month] = max(max_per_month[month], val)
+            if np.isnan(max_per_month[month]):
+                max_per_month[month] = val
+            else:
+                max_per_month[month] = max(max_per_month[month], val)
 
     output_array = [np.nan] * input_array.size
     for i in range(input_array.size):

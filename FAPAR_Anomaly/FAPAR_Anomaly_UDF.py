@@ -18,7 +18,10 @@ def anomaly_calculator(input_array: np.ndarray):
     values_per_month = [[], [], [], [], [], [], [], [], [], [], [], []]  # Made with repr([[]] * 12)
     for i in range(input_array.size):
         month = i % 12
-        values_per_month[month].append(input_array.data[i])
+        val = input_array.data[i]
+        if not np.isnan(val):
+            # Will aggregate ove a big time period, so some missing values should be ok
+            values_per_month[month].append(val)
 
     average_per_month = list(map(lambda month_values: np.array(month_values).mean(), values_per_month))
     sd_per_month = list(map(lambda month_values: np.array(month_values).std(), values_per_month))
@@ -55,7 +58,9 @@ if __name__ == "__main__":
     # Test code:
     array = xr.DataArray(
         data=[1.0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-              13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+              13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+              np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan,
+              ],
         dims=["t"],
     )
     array = array.expand_dims(dim='bands', axis=1).assign_coords(bands=["band_name"])

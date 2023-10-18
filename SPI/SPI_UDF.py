@@ -59,7 +59,8 @@ def proccessingNETCDF(data):
         Returns
         DataArrayGroupBy grouped over point (y and x coordinates)
     """
-    num_days_month = data.t.dt.days_in_month
+    # num_days_month = data.t.dt.days_in_month
+    num_days_month = 30
 
     data_precip = (data * 2.908522800670776e-07) + 0.009530702520736942  # Rescaling the values
     data_precip = data_precip * 1000 * num_days_month  # The original units are meters, we change them to millimeters, and multiply by the days of the month
@@ -114,9 +115,10 @@ if __name__ == "__main__":
     d = [1.0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
          13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
          25, 26, 27, 28, 29, 30]
+    dates = pd.to_datetime(d)
     array = xr.DataArray(
         data=d,
-        coords=pd.to_datetime(d),
+        coords=dates,
         dims=["t"],
     )
 

@@ -21,8 +21,9 @@ def get_connection():
     global connection
     if connection is None:
         # Possible backends:
-        # url = "https://openeo-dev.vito.be"
-        url = "https://openeo.cloud"
+        url = "https://openeo-dev.vito.be"
+        # url = "https://openeo.vito.be"
+        # url = "https://openeo.cloud"
         connection = openeo.connect(url).authenticate_oidc()
         print(connection.root_url + " time: " + str(now))
     return connection
@@ -66,6 +67,11 @@ def select_shape(shpfile):
     # OpenEO also prefers list of Polygons compared to a giant multipolygon
     mask_polygon = mask_polygon.explode(index_parts=True)
 
+    # Simplify to avoid "Trying to construct a datacube with a bounds Extent(....) that is not entirely inside the global bounds..."
+    mask_polygon = mask_polygon.simplify(0.011)
+    # mask_polygon = mask_polygon.buffer(0.001)
+    # mask_polygon = mask_polygon.simplify(0.005)
+
     mask_polygon = mask_polygon.loc[mask_polygon.area > 0.0001]  # Remove tini islands
 
     print("""Mask created.""")
@@ -105,10 +111,10 @@ def load_udf(udf):
 false = False
 true = True
 heavy_job_options = {
-    'driver-memory': '10G',
+    'driver-memory': '20G',
     'driver-memoryOverhead': '5G',
     'driver-cores': '1',
-    'executor-memory': '10G',
+    'executor-memory': '20G',
     'executor-memoryOverhead': '5G',
     'executor-cores': '1',
     'executor-request-cores': '600m',
@@ -133,7 +139,7 @@ heavy_job_options = {
 }
 
 
-def custom_execute_batch(datacube, job_options=None):
+def custom_execute_batch(datacube, job_options=None, out_format="GTiff"):
     try:
         # os.system('find . -type d -empty -delete')  # better run manually
         import inspect
@@ -152,15 +158,15 @@ def custom_execute_batch(datacube, job_options=None):
         except Exception as e:
             print("Could not attach GIT info: " + str(e))
 
-        output_dir = Path(os.path.dirname(parent_filename),) / ("out-" + str(now).replace(":", "_").replace(" ", "_"))
+        output_dir = Path(os.path.dirname(parent_filename), ) / ("out-" + str(now).replace(":", "_").replace(" ", "_"))
         output_dir.mkdir(parents=True, exist_ok=True)
         datacube.print_json(file=output_dir / "process_graph.json", indent=2)
         print(str(output_dir.absolute()) + "/")
         # datacube.download("SPI_monthly.nc")
         job = datacube.create_job(
             title=os.path.basename(parent_filename),
-            format="GTiff",
-            # format="NetCDF",
+            out_format=out_format,
+            # out_format="NetCDF",
             description=job_description,
             filename_prefix=os.path.basename(parent_filename).replace(".py", ""),
             job_options=job_options,
@@ -184,6 +190,19 @@ def custom_execute_batch(datacube, job_options=None):
         print("custom_execute_batch end time: " + str(datetime.datetime.now()))
 
 
+def download_existing_job(job_id: str, conn: 'openeo.Connection'):
+    job = openeo.rest.job.BatchJob(job_id, conn)
+
+    import inspect
+    parent_filename = inspect.stack()[1].filename  # HACK!
+    output_dir = Path(os.path.dirname(parent_filename), ) / job_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    job.get_results().download_files(output_dir)
+
+
 if __name__ == "__main__":
-    get_connection()
-    custom_execute_batch(None)
+    # For testing
+    load_south_africa_geojson()
+    # get_connection()
+    # custom_execute_batch(None)
