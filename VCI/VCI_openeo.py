@@ -34,7 +34,7 @@ CGLS_NDVI300_V1_GLOBAL_dc = connection.load_collection(
 
 CGLS_NDVI300_V2_GLOBAL_dc = connection.load_collection(
     "CGLS_NDVI300_V2_GLOBAL",  # 300m resolution, [2020, present]
-    temporal_extent=["2020-01-01", "2023-09-01"],
+    temporal_extent=["2020-01-01", "2023-10-01"],
     # To avoid "No spatial filter could be derived to load this collection"
     spatial_extent={  # South Africa
         "west": 10,
@@ -68,8 +68,8 @@ CGLS_NDVI300_V2_GLOBAL_dc = connection.load_collection(
 
 # This whole datacube ends up in the UDF to calculate reference data.
 # Combine low quality history, and high quality current time:
-NDVI_dc = (CGLS_NDVI300_V2_GLOBAL_dc
-           .merge_cubes(CGLS_NDVI300_V1_GLOBAL_dc, overlap_resolver="or"))
+NDVI_dc = CGLS_NDVI300_V2_GLOBAL_dc
+#           .merge_cubes(CGLS_NDVI300_V1_GLOBAL_dc, overlap_resolver="or"))
 #           .merge_cubes(CGLS_NDVI_V3_GLOBAL_dc.resample_cube_spatial(CGLS_NDVI300_V1_GLOBAL_dc), overlap_resolver="or"))
 # NDVI_dc = NDVI_dc.filter_temporal("2015-01-01", "2023-07-01")
 
@@ -93,7 +93,7 @@ VCI_dc = VCI_dc.rename_labels("bands", ["VCI"])
 if __name__ == "__main__":
     # Select smaller period for performance. (Min/Max still needs to be calculated on larger period)
     # VCI_dc = NDVI_dc
-    VCI_dc = VCI_dc.filter_temporal("2021-01-01", "2022-01-01")
+    VCI_dc = VCI_dc.filter_temporal("2022-01-01", "2023-01-01")
     # OpenEO batch job failed: KeyError('minKey')
     # IndexError: list index out of range
 

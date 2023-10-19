@@ -39,9 +39,6 @@ SPI_previous_month_dc = SPI_previous_month_dc.rename_labels(
 )
 
 if __name__ == "__main__":
-    # Sometimes got errors like this:
-    # Trying to construct a datacube with a bounds Extent(16.448304, -46.981234, 38.002543, -22.12718) that is not entirely inside the global bounds: Extent(9.949999999999989, -40.05, 40.05000000000001, -19.94999999999999)
-
     geojson = load_south_africa_geojson()
     # geojson = load_johannesburg_geojson()
     SPI_dc = SPI_dc.filter_spatial(geojson)

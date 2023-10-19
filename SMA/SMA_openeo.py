@@ -3,7 +3,6 @@ from openeo_utils.utils import *
 
 connection = get_connection()
 
-# inspired on https://git.vito.be/users/lippenss/repos/workspace/browse/2023/PEOPLE/udp-reduce_temporal.ipynb
 SMA_dc = connection.load_disk_collection(
     format="GTiff",
     # TODO: Should fetch realtime data
@@ -20,13 +19,6 @@ if __name__ == "__main__":
     start = f"{year}/01/01"
     end = f"{year + 2}/01/01"  # Big time range
     SMA_dc = SMA_dc.filter_temporal([start, end])
-    # SMA_dc = SMA_dc.filter_bbox(
-    #     west=10,
-    #     south=-40,
-    #     east=40,
-    #     north=-20,
-    # )
-    # TODO: Combining filter_bbox and filter_spatial can give stretching problems! Probably need to avoid load_disk_collection.
 
     geojson = load_south_africa_geojson()
     # geojson = load_johannesburg_geojson()
