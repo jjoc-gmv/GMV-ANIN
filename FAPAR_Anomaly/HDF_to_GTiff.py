@@ -17,17 +17,21 @@ import shapely.ops
 # wget --mirror --domains www.glass.umd.edu --no-parent http://www.glass.umd.edu/FAPAR/MODIS/250m/ --accept "*.h19v1[123].*.hdf" --accept "*.h20v1[123].*.hdf" --accept "index.html"
 
 # http://www.glass.umd.edu/Overview.html
-input_path = Path('/dataCOPY/users/Public/emile.sonneveld/GLASS_FAPAR_Layer/www.glass.umd.edu/FAPAR/MODIS/250m/')
+input_path = Path(
+    "/dataCOPY/users/Public/emile.sonneveld/GLASS_FAPAR_Layer/www.glass.umd.edu/FAPAR/MODIS/250m/"
+)
 if not input_path.exists():
     raise Exception("Path not found: " + str(input_path))
 
-output_path = Path("/dataCOPY/users/Public/emile.sonneveld/GLASS_FAPAR_Layer/tiff_collection/")
+output_path = Path(
+    "/data/users/Public/emile.sonneveld/GLASS_FAPAR_Layer/tiff_collection/"
+)
 if not output_path.exists():
     raise Exception("Path not found: " + str(output_path))
 
 os.chdir(input_path)
 
-file_list = list(input_path.rglob('*.hdf'))
+file_list = list(input_path.rglob("*.hdf"))
 
 
 def read_hdf_extent_polygon(hdf_file_path) -> typing.Optional[gpd.GeoDataFrame]:
@@ -41,7 +45,9 @@ def read_hdf_extent_polygon(hdf_file_path) -> typing.Optional[gpd.GeoDataFrame]:
     miny = maxy + geo_transform[5] * hdf_data.RasterYSize
 
     hdf_crs = pyproj.CRS.from_user_input(hdf_data.GetProjection())
-    return gpd.GeoDataFrame(geometry=[shapely.geometry.box(minx, miny, maxx, maxy)], crs=hdf_crs)
+    return gpd.GeoDataFrame(
+        geometry=[shapely.geometry.box(minx, miny, maxx, maxy)], crs=hdf_crs
+    )
 
 
 if __name__ == "__main__":
@@ -58,8 +64,13 @@ if __name__ == "__main__":
             year = int(z.group(1))
             day = int(z.group(2))
             date = datetime.date(year, 1, 1) + datetime.timedelta(days=day)
-            output_file = (output_path / "{:04d}".format(date.year) / "{:02d}".format(date.month) /
-                           "{:02d}".format(date.day) / (file_path.name + ".tiff"))
+            output_file = (
+                    output_path
+                    / "{:04d}".format(date.year)
+                    / "{:02d}".format(date.month)
+                    / "{:02d}".format(date.day)
+                    / (file_path.name + ".tiff")
+            )
             output_file.parent.mkdir(parents=True, exist_ok=True)
             if output_file.exists():
                 print("output already exists: " + str(output_file))
@@ -80,7 +91,8 @@ if __name__ == "__main__":
             cmd = f"""gdal_translate -co COMPRESS=DEFLATE -of GTiff "{file_path}" "{output_file}.tmp" """
             print(cmd)
             os.system(cmd)
-            os.rename(f"{output_file}.tmp", output_file)  # atomic, to avoid corrupt files
+            # atomic, to avoid corrupt files
+            os.rename(f"{output_file}.tmp", output_file)
             # exit()
         except KeyboardInterrupt:
             # To be a ble to stop the program

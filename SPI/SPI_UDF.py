@@ -15,9 +15,9 @@ from climate_indices import indices
 
 scale = 3
 distribution = climate_indices.indices.Distribution.gamma  # Fixed
-data_start_year = 2015
-calibration_year_initial = 2015
-calibration_year_final = 2024
+data_start_year = 1980
+calibration_year_initial = 1980
+calibration_year_final = 2023
 periodicity = climate_indices.compute.Periodicity.monthly  # Fixed
 
 if calibration_year_final - calibration_year_initial <= 2:
@@ -36,7 +36,7 @@ def spi_wrapped(values: np.ndarray):
     )[np.newaxis].T
 
 
-def proccessingNETCDF(data):
+def proccessingNETCDF(data: xr.DataArray):
     """Process the data to serve as input to de SPI function
     Args:
         data: netcdf file
@@ -47,8 +47,11 @@ def proccessingNETCDF(data):
     num_days_month = data.t.dt.days_in_month
     # num_days_month = 30
 
-    data_precip = (data * 2.908522800670776e-07) + 0.009530702520736942  # Rescaling the values
-    data_precip = data_precip * 1000 * num_days_month  # The original units are meters, we change them to millimeters, and multiply by the days of the month
+    tp_scale_factor = 2.180728636941368e-07
+    tp_add_offset = 0.007146202370012436
+    data_precip = (data * tp_scale_factor) + tp_add_offset  # Rescaling the values
+    # data_precip = (data * 2.908522800670776e-07) + 0.009530702520736942  # Rescaling the values
+    # data_precip = data_precip * 1000  # The original units are meters, we change them to millimeters, and multiply by the days of the month
     data_precip = data_precip.squeeze()
 
     # Giving the appropriate shape to da data
