@@ -15,9 +15,8 @@ SMA_dc = SMA_dc.aggregate_temporal_period("month", reducer="mean")
 SMA_dc = SMA_dc.rename_labels("bands", ["SMA"])
 
 if __name__ == "__main__":
-    year = 2021
-    start = f"{year}/01/01"
-    end = f"{year + 2}/01/01"  # Big time range
+    start = f"2020-01-01"
+    end = f"2023-09-01"
     SMA_dc = SMA_dc.filter_temporal([start, end])
 
     geojson = load_south_africa_geojson()

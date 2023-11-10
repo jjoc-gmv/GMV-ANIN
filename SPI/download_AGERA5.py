@@ -12,17 +12,18 @@ import osgeo.ogr
 import osgeo.osr
 
 # Configure cdsapi access: https://cds.climate.copernicus.eu/api-how-to#install-the-cds-api-key
+# https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land-monthly-means?tab=form
 
 # Avoid "Warning 1: Unable to save auxiliary information in ..."
 os.environ["GDAL_PAM_ENABLED"] = "NO"
 
 c = cdsapi.Client()
-download_path = Path("/data/users/Public/emile.sonneveld/ERA5-Land-monthly-averaged-data/")
+download_path = Path(__file__).parent
 if not download_path.exists():
     raise Exception("download_path not found: " + str(download_path))
 (download_path / "tiff_collection").mkdir(exist_ok=True)
 
-tempdir = Path(tempfile.mkdtemp())
+tempdir = Path(tempfile.mkdtemp(prefix="tmp_" + os.path.basename(__file__)))
 
 today = datetime.date.today()
 
@@ -116,7 +117,9 @@ for year in range(1970, 2023):
             continue
 
     # Requesting multiple bands at once gives confusing results
-    for band_name in ["2m_temperature", "total_precipitation"]:
+    for band_name in ['10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature',
+                      '2m_temperature', 'surface_pressure', 'surface_solar_radiation_downwards',
+                      'total_precipitation']:
         target_file = download_path / f"download_{year}_{band_name}.netcdf.zip"
         months = list(range(1, 13))
         if today.year == year and target_file.exists():
@@ -145,5 +148,7 @@ for year in range(1970, 2023):
             )
             os.rename(tmp_file_path, target_file)  # atomic, to avoid corrupt files
         netcdf_zip_to_gtiff(target_file)
+
+shutil.rmtree(tempdir, ignore_errors=True)
 
 print("Done")

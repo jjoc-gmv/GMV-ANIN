@@ -8,3 +8,8 @@ __pycache__
 *.aux.xml
 */.ipynb_checkpoints/
 */out-*
+
+# Temp dirs and files
+temp/
+tmp/
+tmp*

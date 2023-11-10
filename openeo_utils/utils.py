@@ -34,7 +34,7 @@ def load_south_africa_shape() -> gpd.GeoDataFrame:
     This can be used as a mask
     """
     shape_df = gpd.read_file(
-        containing_folder / "../SPI/shape/CNTR_RG_01M_2020_4326.shp"
+        containing_folder / "shape/CNTR_RG_01M_2020_4326.shp"
     )
 
     col_code = "ISO3_CODE"
@@ -50,7 +50,7 @@ def load_south_africa_shape() -> gpd.GeoDataFrame:
     geodata_polygon = gpd.GeoDataFrame(geometry=[unioned_polygon])
 
     # OpenEO also prefers list of Polygons compared to a giant multipolygon
-    geodata_polygon = geodata_polygon.explode(index_parts=True)
+    geodata_polygon = geodata_polygon.explode()  # index_parts=True
 
     # Simplify to avoid "Trying to construct a datacube with a bounds Extent(....) that is not entirely inside the global bounds..."
     geodata_polygon = gpd.GeoDataFrame(geometry=geodata_polygon.simplify(0.011))
@@ -129,7 +129,7 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff"):
 
         with open(parent_filename, "r") as file:
             job_description = (
-                "now: " + str(now) + " url: " + connection.root_url + "\n\n"
+                "now: `" + str(now) + "` url: <" + connection.root_url + ">\n\n"
             )
             job_description += (
                 "python code: \n\n\n```python\n" + file.read() + "```\n\n"
@@ -141,13 +141,13 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff"):
             repo = Repo(
                 os.path.dirname(parent_filename), search_parent_directories=True
             )
-            job_description += "GIT URL: " + list(repo.remotes[0].urls)[0] + "\n\n"
+            job_description += "GIT URL: <" + list(repo.remotes[0].urls)[0] + ">\n\n"
             job_description += (
-                "GIT branch: '"
+                "GIT branch: `"
                 + repo.active_branch.name
-                + "' commit: '"
+                + "` commit: `"
                 + repo.active_branch.commit.hexsha
-                + "'\n\n"
+                + "`\n\n"
             )
             job_description += (
                 "GIT changed files: "
@@ -163,7 +163,7 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff"):
         output_dir.mkdir(parents=True, exist_ok=True)
         datacube.print_json(file=output_dir / "process_graph.json", indent=2)
         print(str(output_dir.absolute()) + "/")
-        # datacube.download("SPI_monthly.nc")
+        # datacube.download(os.path.basename(parent_filename) + ".nc")
         job = datacube.create_job(
             title=os.path.basename(parent_filename),
             out_format=out_format,
@@ -177,8 +177,8 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff"):
         job.start_and_wait()
         job.get_results().download_files(output_dir)
 
-        with open(output_dir / "logs.json", "w") as f:
-            json.dump(job.logs(), f, indent=2)
+        # with open(output_dir / "logs.json", "w") as f:
+        #     json.dump(job.logs(), f, indent=2)  # too often timeout
 
         os.system('spd-say "Program terminated"')  # vocal feedback
     except KeyboardInterrupt:
