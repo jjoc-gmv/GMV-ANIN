@@ -10,22 +10,18 @@ import requests
 # Emile: Sometimes python hangs on IPv6 requests.
 requests.packages.urllib3.util.connection.HAS_IPV6 = False
 
-connection = None
-
 now = datetime.datetime.now()
 
 containing_folder = Path(__file__).parent
 
 
 def get_connection():
-    global connection
-    if connection is None:
-        # Possible backends:
-        # url = "https://openeo-dev.vito.be"
-        # url = "https://openeo.vito.be"
-        url = "https://openeo.cloud"
-        connection = openeo.connect(url).authenticate_oidc()
-        print(connection.root_url + " time: " + str(now))
+    # Possible backends:
+    url = "https://openeo-dev.vito.be"
+    # url = "https://openeo.vito.be"
+    # url = "https://openeo.cloud"
+    connection = openeo.connect(url).authenticate_oidc()
+    print(connection.root_url + " time: " + str(now))
     return connection
 
 
@@ -129,14 +125,14 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff"):
 
         with open(parent_filename, "r") as file:
             job_description = (
-                "now: `" + str(now) + "` url: <" + connection.root_url + ">\n\n"
+                "now: `" + str(now) + "` url: <" + datacube.connection.root_url + ">\n\n"
             )
             job_description += (
                 "python code: \n\n\n```python\n" + file.read() + "```\n\n"
             )
 
         try:
-            from git import Repo
+            from git import Repo  # pip install GitPython
 
             repo = Repo(
                 os.path.dirname(parent_filename), search_parent_directories=True
@@ -164,12 +160,17 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff"):
         datacube.print_json(file=output_dir / "process_graph.json", indent=2)
         print(str(output_dir.absolute()) + "/")
         # datacube.download(os.path.basename(parent_filename) + ".nc")
+        if job_options is None:
+            job_options = dict()
+        if "filename_prefix" not in job_options:
+            job_options["filename_prefix"] = os.path.basename(parent_filename).replace(".py", "")
+
         job = datacube.create_job(
             title=os.path.basename(parent_filename),
             out_format=out_format,
             # out_format="NetCDF",
             description=job_description,
-            filename_prefix=os.path.basename(parent_filename).replace(".py", ""),
+            # filename_prefix=os.path.basename(parent_filename).replace(".py", ""),
             job_options=job_options,
         )
         with open(output_dir / "job_id.txt", mode="w") as f:
@@ -210,6 +211,6 @@ def download_existing_job(job_id: str, conn: "openeo.Connection"):
 
 if __name__ == "__main__":
     # For testing
-    load_south_africa_geojson()
+    load_south_africa_shape()
     # get_connection()
     # custom_execute_batch(None)

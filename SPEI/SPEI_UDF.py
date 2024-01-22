@@ -1,0 +1,289 @@
+import numpy as np
+import os
+import sys
+import xarray as xr
+import logging
+from openeo.udf import XarrayDataCube, inspect
+
+# import dask
+#
+# dask.config.set(scheduler='multiprocessing')
+
+wheel_path = '/dataCOPY/users/Public/emile.sonneveld/python/climate_indices-1.0.13-py2.py3-none-any.whl'
+if not os.path.exists(wheel_path):
+    wheel_path = wheel_path.replace("dataCOPY/", "data/")
+    if not os.path.exists(wheel_path):
+        raise Exception("Path not found: " + wheel_path)
+
+sys.path.insert(0, wheel_path)
+import climate_indices
+from climate_indices import indices
+
+############################## SETTING PARAMETERS  ##############################
+_log = logging.getLogger("SPEI_UDF.py")
+
+scale = 3
+distribution = climate_indices.indices.Distribution.gamma  # Fixed
+data_start_year = 1980  # 1980
+calibration_year_initial = 1980  # 1980
+calibration_year_final = 2023
+periodicity = climate_indices.compute.Periodicity.monthly  # Fixed
+
+if calibration_year_final - calibration_year_initial <= 2:
+    print("Gamma correction on only 2 years will give bad looking results")
+
+
+def spei_wrapped(precips_mm, pet_mm):
+    tmp = indices.spei(
+        precips_mm=precips_mm,
+        pet_mm=pet_mm,
+        scale=scale,
+        distribution=distribution,
+        data_start_year=data_start_year,
+        calibration_year_initial=calibration_year_initial,
+        calibration_year_final=calibration_year_final,
+        periodicity=periodicity,
+    )
+    tmp = tmp.squeeze()  # When running in openeo this is needed
+    tmp = tmp[np.newaxis].T
+    # Jan 6, 2024 @ 13:39:38.961	WARNING	spei_wrapped(...) tmp.shape: (1, 35, 1)
+    # Jan 6, 2024 @ 13:39:38.959	WARNING	spei_wrapped(...) tmp.shape: (35, 1)
+    # _log.warning("spei_wrapped(...) tmp.shape: " + str(tmp.shape))
+    return tmp
+
+
+def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
+    array: xr.DataArray = cube.get_array()
+
+    # ['2_metre_dewpoint_temperature', 'surface_pressure', 'surface_solar_radiation_downwards', 'wind-speed',
+    # 'total_precipitation', 'temperature-min', 'temperature-mean', 'temperature-max']
+    bands = [
+        "2_metre_dewpoint_temperature",
+        "surface_pressure",
+        "surface_solar_radiation_downwards",
+        "10_metre_u_wind_component",
+        "10_metre_v_wind_component",
+        "total_precipitation",
+        "temperature-min",
+        "temperature-mean",
+        "temperature-max",
+    ]
+
+    def get_band(band_name):
+        tmp = array.sel(bands=band_index(band_name))
+        kelvin_to_celsius_offset = 273.15
+        if band_name == "2_metre_dewpoint_temperature":
+            scale_factor = 0.0005656926007221552
+            add_offset = 277.5806497708871
+            tmp = (tmp * scale_factor) + add_offset - kelvin_to_celsius_offset
+        elif band_name == "surface_pressure":
+            scale_factor = 0.4866164756687471
+            add_offset = 86910.41294176216
+            tmp = (tmp * scale_factor) + add_offset
+            tmp = tmp * (pow(10, -3))  # The original units are Pa, we change them to KPa
+        elif band_name == "surface_solar_radiation_downwards":
+            scale_factor = 403.0857735797232
+            add_offset = 20761072.45711321
+            tmp = (tmp * scale_factor) + add_offset
+            tmp = tmp * pow(10, -6)  # The original units are J/m2, we change them to MJ/m2
+        elif band_name == "total_precipitation":
+            scale_factor = 3.75736978302092e-07
+            add_offset = 0.01231178684557716
+            tmp = (tmp * scale_factor) + add_offset
+            num_days_month = 30
+            tmp = tmp * 1000 * num_days_month
+        elif band_name == "10_metre_u_wind_component":
+            scale_factor = 0.0001736676976919891
+            add_offset = -0.7835841673754573
+            tmp = (tmp * scale_factor) + add_offset
+        elif band_name == "10_metre_v_wind_component":
+            scale_factor = 0.0001924735620483028
+            add_offset = 1.773337925358868
+            tmp = (tmp * scale_factor) + add_offset
+        elif band_name == "temperature-min":
+            tmp = tmp - kelvin_to_celsius_offset
+        elif band_name == "temperature-mean":
+            tmp = tmp - kelvin_to_celsius_offset
+        elif band_name == "temperature-max":
+            tmp = tmp - kelvin_to_celsius_offset
+        else:
+            raise Exception("Unknown band: " + band_name)
+
+        return tmp
+
+    def band_index(band_name):
+        if band_name not in bands:
+            raise Exception("Unknown band: " + band_name)
+        if os.path.exists('/dataCOPY/'):
+            return bands.index(band_name)  # when running locally
+        else:
+            return band_name  # when running in openeo
+
+    try:
+        array.sel(bands="2_metre_dewpoint_temperature")
+        _log.warning('SUCCEEDED : array.sel(bands="2_metre_dewpoint_temperature") ')
+    except Exception as e:
+        _log.warning('FAILED : array.sel(bands="2_metre_dewpoint_temperature") ' + repr(e))
+
+    try:
+        array.sel({"bands": 1})
+        _log.warning('SUCCEEDED : array.sel({"bands": 1}) ')
+    except Exception as e:
+        _log.warning('FAILED : array.sel({"bands": 1})' + repr(e))
+
+    # if True:
+    #     print("Debug!")
+    #     scaled_bands = []
+    #     for band_name in bands:
+    #         b = get_band(band_name)
+    #         scaled_bands.append(b)
+    #
+    #     # Concat all scaled_bands to one xarray:
+    #     scaled_bands = xr.concat(scaled_bands, "bands")
+    #     return XarrayDataCube(scaled_bands)
+
+    # noinspection SpellCheckingInspection
+    def get_pet_mm():
+        Tmean = get_band("temperature-mean")
+
+        # Rn - net radiation at the crop surface MJ m-2 day-1
+        Rn = get_band("surface_solar_radiation_downwards")
+
+        # G -  soil heat flux density MJ m-2 day-1  Fixed value
+        G = 0
+        svpc = (4098 * (0.6108 * np.exp((17.27 * Tmean) / (Tmean + 237.3)))) / ((Tmean + 237.3) ** 2)
+
+        P = get_band("surface_pressure")
+
+        Cp = 0.001013  # specific heat at constant pressure MJ kg-1 °C-1
+        epsi = 0.622  # ratio molecular weight of water vapour/dry air
+        lamb = 2.45  # latent heat of vaporization MJ kg-1
+        psi_cnt = (Cp * P) / (epsi * lamb)  # Psychometric constant
+
+        u10 = get_band("10_metre_u_wind_component")
+        v10 = get_band("10_metre_v_wind_component")
+        u2 = ((u10 ** 2) + (v10 ** 2)) ** 0.5  # Getting wind component
+
+        Tmin = get_band("temperature-min")
+        Tmax = get_band("temperature-max")
+
+        e0Tmax = 0.6108 * np.exp((17.27 * Tmax) / (Tmax + 237.3))
+        e0Tmin = 0.6108 * np.exp((17.27 * Tmin) / (Tmin + 237.3))
+        es = (e0Tmax - e0Tmin) / 2  # saturation vapour pressure kPa
+
+        Tdew = get_band("2_metre_dewpoint_temperature")
+
+        ea = 0.6108 * np.exp((17.27 * Tdew) / (Tdew + 237.3))  # actual vapour pressure kPa
+
+        pet_mm = (((0.408 * svpc) * (Rn - G)) + (psi_cnt * (900 / (Tmean + 273))) * u2 * (es - ea)) / (
+                svpc + (psi_cnt * (1 + (0.34 * u2))))
+
+        return pet_mm
+
+    precips_mm = get_band("total_precipitation").astype(np.dtype('float64'))
+    pet_mm = get_pet_mm().astype(np.dtype('float64'))
+
+    inspect(data=[precips_mm], message="inspect precips_mm")
+
+    try:
+        inspect(data=[precips_mm.variable], message="inspect precips_mm.variable")
+        _log.warning('SUCCEEDED: inspect(data=[precips_mm.variable], message="inspect precips_mm.variable") ')
+    except Exception as e:
+        _log.warning('FAILED: inspect(data=[precips_mm.variable], message="inspect precips_mm.variable") ' + repr(e))
+
+    if os.path.exists('/dataCOPY/'):
+        # when running locally
+        precips_mm = precips_mm.squeeze(drop=True)
+        pet_mm = pet_mm.squeeze(drop=True)
+        precips_mm = precips_mm.drop_vars("variable")
+        pet_mm = pet_mm.drop_vars("variable")
+    else:
+        # when running in openeo
+        precips_mm = precips_mm.squeeze(drop=True)
+        pet_mm = pet_mm.squeeze(drop=True)
+
+        try:
+            precips_mm = precips_mm.drop("bands")
+            pet_mm = pet_mm.drop("bands")
+            _log.warning('SUCCEEDED: precips_mm.drop("bands") ')
+        except Exception as e:
+            _log.warning(
+                'FAILED: precips_mm.drop("bands") ' + repr(e))
+
+    inspect(data=[precips_mm], message="inspect precips_mm")
+
+    _log.warning(
+        "spei_wrapped(...) 4 precips_mm.shape: " + str(precips_mm.shape) + " precips_mm.dims :" + str(precips_mm.dims))
+    _log.warning("spei_wrapped(...) 4 pet_mm.shape: " + str(pet_mm.shape) + " pet_mm.dims :" + str(pet_mm.dims))
+
+    precips_mm_grouped = precips_mm.stack(point=('y', 'x')).groupby('point', squeeze=True)
+    pet_mm_grouped = pet_mm.stack(point=('y', 'x')).groupby('point', squeeze=True)
+
+    # if not precips_mm_grouped._group.equals(pet_mm_grouped._group):
+    #     _log.warning("COORDS: " + str(precips_mm_grouped._group.coords) + "\n -VS- \n" + str(pet_mm_grouped._group.coords))
+    #     raise ValueError(
+    #         "Emile: apply_ufunc can only perform operations over "
+    #         "multiple GroupBy objects at once if they are all "
+    #         "grouped the same way"
+    #     )
+
+    # ValueError: apply_ufunc can only perform operations over multiple GroupBy objects at once if they are all grouped the same way
+    spi_results = xr.apply_ufunc(spei_wrapped,
+                                 precips_mm_grouped,
+                                 pet_mm_grouped,
+                                 # input_core_dims=[["t"]],
+                                 # output_core_dims=[["t"]],
+                                 )
+
+    BAND_NAME = 'SPEI'
+    # spi_results = xr.DataArray(spi_results, dims=['y', 'x'])
+    spi_results = spi_results.expand_dims(dim='bands', axis=0).assign_coords(bands=[BAND_NAME])
+
+    spi_results = spi_results.unstack('point')
+    spi_results = spi_results.rename({'y': 'lat', 'x': 'lon'})  # Necessary step
+    spi_results = spi_results.reindex(lat=list(reversed(spi_results['lat'])))
+    spi_results = spi_results.rename({'lat': 'y', 'lon': 'x'})
+
+    # No need to specify crs here
+    return XarrayDataCube(spi_results)
+
+
+if __name__ == "__main__":
+    print("Running test code!")
+    import datetime
+
+    now = datetime.datetime.now()
+
+    # from pathlib import Path
+    # from openeo.udf import execute_local_udf
+    # smoothing_udf = Path(__file__).read_text()
+    # execute_local_udf(smoothing_udf, '/home/emile/openeo/drought-indices/SPEI/openEO.nc', fmt='netcdf')
+    # exit(0)
+
+    # Test code:
+    import rioxarray as rxr
+
+    # dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/openEO_with_wind.nc")
+    dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/openEO_2d_wind.nc")
+    # dataset = rxr.open_rasterio("/home/emile/Desktop/ToShareWithVito/SPI/ERA5_monthly.nc")
+    array = dataset.to_array().swap_dims({"variable": "bands"})
+
+    # Drop the last column of the array:
+    # array = array.isel(x=slice(2, -2)).isel(y=slice(2, -2))
+
+    # convert to float32:
+    array = array.astype(np.float32)
+
+    ret = apply_datacube(XarrayDataCube(array), dict())
+    arr = ret.array
+    data_crs = dataset.rio.crs
+    arr.rio.write_crs(data_crs, inplace=True)
+    arr = arr.squeeze()  # remove unneeded dimensions
+    # First timeframes are NaN, which is confusing, as it shows nothing in Q-GIS. Drop them:
+    arr = arr.dropna(dim="t", how="all")  # Might be nice to only trim beginning and end, in all dimensions
+    if len(arr.dims) > 3:
+        print("Taking only first time sample to avoid too many dimensions")
+        arr = arr.isel(t=0)
+    arr.rio.to_raster("tmp/out-" + str(now).replace(":", "_").replace(" ", "_") + ".nc")
+    # arr.to_netcdf("tmp/output_file.nc")
+    print(ret)
