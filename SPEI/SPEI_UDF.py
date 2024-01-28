@@ -69,36 +69,44 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
         "temperature-max",
     ]
 
+    def band_index(band_name):
+        if band_name not in bands:
+            raise Exception("Unknown band: " + band_name)
+        if os.path.exists('/dataCOPY/'):
+            return bands.index(band_name)  # when running locally
+        else:
+            return band_name  # when running in openeo
+
     def get_band(band_name):
         tmp = array.sel(bands=band_index(band_name))
         kelvin_to_celsius_offset = 273.15
         if band_name == "2_metre_dewpoint_temperature":
-            scale_factor = 0.0005656926007221552
-            add_offset = 277.5806497708871
+            scale_factor = 0.0005626414482970412
+            add_offset = 278.4347772730259
             tmp = (tmp * scale_factor) + add_offset - kelvin_to_celsius_offset
         elif band_name == "surface_pressure":
-            scale_factor = 0.4866164756687471
-            add_offset = 86910.41294176216
+            scale_factor = 0.4686951612164864
+            add_offset = 87192.01565241939
             tmp = (tmp * scale_factor) + add_offset
             tmp = tmp * (pow(10, -3))  # The original units are Pa, we change them to KPa
         elif band_name == "surface_solar_radiation_downwards":
-            scale_factor = 403.0857735797232
-            add_offset = 20761072.45711321
+            scale_factor = 366.9990996902324
+            add_offset = 20733864.50045016
             tmp = (tmp * scale_factor) + add_offset
             tmp = tmp * pow(10, -6)  # The original units are J/m2, we change them to MJ/m2
         elif band_name == "total_precipitation":
-            scale_factor = 3.75736978302092e-07
-            add_offset = 0.01231178684557716
+            scale_factor = 2.691410126503918e-07
+            add_offset = 0.00881925537343117
             tmp = (tmp * scale_factor) + add_offset
             num_days_month = 30
             tmp = tmp * 1000 * num_days_month
         elif band_name == "10_metre_u_wind_component":
-            scale_factor = 0.0001736676976919891
-            add_offset = -0.7835841673754573
+            scale_factor = 0.0001601881072305577
+            add_offset = -0.9112276885055196
             tmp = (tmp * scale_factor) + add_offset
         elif band_name == "10_metre_v_wind_component":
-            scale_factor = 0.0001924735620483028
-            add_offset = 1.773337925358868
+            scale_factor = 0.0001860289368259747
+            add_offset = 2.17191931463315
             tmp = (tmp * scale_factor) + add_offset
         elif band_name == "temperature-min":
             tmp = tmp - kelvin_to_celsius_offset
@@ -111,13 +119,9 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
 
         return tmp
 
-    def band_index(band_name):
-        if band_name not in bands:
-            raise Exception("Unknown band: " + band_name)
-        if os.path.exists('/dataCOPY/'):
-            return bands.index(band_name)  # when running locally
-        else:
-            return band_name  # when running in openeo
+    # bands2 = list(map(get_band, bands))
+    # spi_results = xr.concat(bands2, "bands")
+    # return XarrayDataCube(spi_results)
 
     try:
         array.sel(bands="2_metre_dewpoint_temperature")
@@ -263,10 +267,11 @@ if __name__ == "__main__":
     # Test code:
     import rioxarray as rxr
 
-    # dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/openEO_with_wind.nc")
-    dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/openEO_2d_wind.nc")
-    # dataset = rxr.open_rasterio("/home/emile/Desktop/ToShareWithVito/SPI/ERA5_monthly.nc")
-    array = dataset.to_array().swap_dims({"variable": "bands"})
+    dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/era5_raw_bands.nc")
+    if dataset.to_array().dims == ('variable', 'band', 'y', 'x'):
+        array = dataset.to_array().swap_dims({"variable": "bands", "band": "t"})
+    else:
+        array = dataset.to_array().swap_dims({"variable": "bands"})
 
     # Drop the last column of the array:
     # array = array.isel(x=slice(2, -2)).isel(y=slice(2, -2))
