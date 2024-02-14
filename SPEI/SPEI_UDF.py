@@ -81,32 +81,32 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
         tmp = array.sel(bands=band_index(band_name))
         kelvin_to_celsius_offset = 273.15
         if band_name == "2_metre_dewpoint_temperature":
-            scale_factor = 0.0005626414482970412
-            add_offset = 278.4347772730259
+            scale_factor = 1
+            add_offset = 0
             tmp = (tmp * scale_factor) + add_offset - kelvin_to_celsius_offset
         elif band_name == "surface_pressure":
-            scale_factor = 0.4686951612164864
-            add_offset = 87192.01565241939
+            scale_factor = 1
+            add_offset = 0
             tmp = (tmp * scale_factor) + add_offset
             tmp = tmp * (pow(10, -3))  # The original units are Pa, we change them to KPa
         elif band_name == "surface_solar_radiation_downwards":
-            scale_factor = 366.9990996902324
-            add_offset = 20733864.50045016
+            scale_factor = 1
+            add_offset = 0
             tmp = (tmp * scale_factor) + add_offset
             tmp = tmp * pow(10, -6)  # The original units are J/m2, we change them to MJ/m2
         elif band_name == "total_precipitation":
-            scale_factor = 2.691410126503918e-07
-            add_offset = 0.00881925537343117
+            scale_factor = 1
+            add_offset = 0
             tmp = (tmp * scale_factor) + add_offset
             num_days_month = 30
             tmp = tmp * 1000 * num_days_month
         elif band_name == "10_metre_u_wind_component":
-            scale_factor = 0.0001601881072305577
-            add_offset = -0.9112276885055196
+            scale_factor = 1
+            add_offset = 0
             tmp = (tmp * scale_factor) + add_offset
         elif band_name == "10_metre_v_wind_component":
-            scale_factor = 0.0001860289368259747
-            add_offset = 2.17191931463315
+            scale_factor = 1
+            add_offset = 0
             tmp = (tmp * scale_factor) + add_offset
         elif band_name == "temperature-min":
             tmp = tmp - kelvin_to_celsius_offset
@@ -267,7 +267,8 @@ if __name__ == "__main__":
     # Test code:
     import rioxarray as rxr
 
-    dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/era5_raw_bands.nc")
+    # dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/era5_raw_bands_GMV.nc")
+    dataset = rxr.open_rasterio('/home/emile/Downloads/openEO (19).nc')
     if dataset.to_array().dims == ('variable', 'band', 'y', 'x'):
         array = dataset.to_array().swap_dims({"variable": "bands", "band": "t"})
     else:

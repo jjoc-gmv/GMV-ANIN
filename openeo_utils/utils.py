@@ -116,7 +116,7 @@ heavy_job_options = {
 }
 
 
-def custom_execute_batch(datacube, job_options=None, out_format="GTiff"):
+def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_locally=False):
     try:
         # os.system('find . -type d -empty -delete')  # better run manually
         import inspect
@@ -159,24 +159,30 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff"):
         output_dir.mkdir(parents=True, exist_ok=True)
         datacube.print_json(file=output_dir / "process_graph.json", indent=2)
         print(str(output_dir.absolute()) + "/")
-        # datacube.download(os.path.basename(parent_filename) + ".nc")
-        if job_options is None:
-            job_options = dict()
-        if "filename_prefix" not in job_options:
-            job_options["filename_prefix"] = os.path.basename(parent_filename).replace(".py", "")
+        if run_locally:
+            os.system(
+                "python /home/emile/openeo/openeo-geopyspark-driver/tests/integrations/test_run_graph_locally.py "
+                + str(output_dir / "process_graph.json")
+            )
+        else:
+            # datacube.download(os.path.basename(parent_filename) + ".nc")
+            if job_options is None:
+                job_options = dict()
+            if "filename_prefix" not in job_options:
+                job_options["filename_prefix"] = os.path.basename(parent_filename).replace(".py", "")
 
-        job = datacube.create_job(
-            title=os.path.basename(parent_filename),
-            out_format=out_format,
-            # out_format="NetCDF",
-            description=job_description,
-            # filename_prefix=os.path.basename(parent_filename).replace(".py", ""),
-            job_options=job_options,
-        )
-        with open(output_dir / "job_id.txt", mode="w") as f:
-            f.write(job.job_id)
-        job.start_and_wait()
-        job.get_results().download_files(output_dir)
+            job = datacube.create_job(
+                title=os.path.basename(parent_filename),
+                out_format=out_format,
+                # out_format="NetCDF",
+                description=job_description,
+                # filename_prefix=os.path.basename(parent_filename).replace(".py", ""),
+                job_options=job_options,
+            )
+            with open(output_dir / "job_id.txt", mode="w") as f:
+                f.write(job.job_id)
+            job.start_and_wait()
+            job.get_results().download_files(output_dir)
 
         # with open(output_dir / "logs.json", "w") as f:
         #     json.dump(job.logs(), f, indent=2)  # too often timeout
