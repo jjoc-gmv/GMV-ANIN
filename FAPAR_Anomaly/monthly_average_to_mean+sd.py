@@ -69,4 +69,12 @@ def main():
 
 
 main()
+
+path = "/data/MODIS/GLASS_FAPAR/tiff_collection_months_mean/"
+files = list(Path(path).rglob("*.tif"))
+for f in files:
+    print(f)
+    f_new = str(f).replace("2000-", "2020-")
+    os.rename(f, f_new)
+
 exit()
