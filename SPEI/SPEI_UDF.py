@@ -5,10 +5,6 @@ import xarray as xr
 import logging
 from openeo.udf import XarrayDataCube, inspect
 
-# import dask
-#
-# dask.config.set(scheduler='multiprocessing')
-
 wheel_path = '/dataCOPY/users/Public/emile.sonneveld/python/climate_indices-1.0.13-py2.py3-none-any.whl'
 if not os.path.exists(wheel_path):
     wheel_path = wheel_path.replace("dataCOPY/", "data/")
@@ -23,11 +19,11 @@ from climate_indices import indices
 _log = logging.getLogger("SPEI_UDF.py")
 
 scale = 3
-distribution = climate_indices.indices.Distribution.gamma  # Fixed
-data_start_year = 1980  # 1980
-calibration_year_initial = 1980  # 1980
+distribution = climate_indices.indices.Distribution.gamma
+data_start_year = 1980
+calibration_year_initial = 1980
 calibration_year_final = 2023
-periodicity = climate_indices.compute.Periodicity.monthly  # Fixed
+periodicity = climate_indices.compute.Periodicity.monthly
 
 if calibration_year_final - calibration_year_initial <= 2:
     print("Gamma correction on only 2 years will give bad looking results")
@@ -44,19 +40,14 @@ def spei_wrapped(precips_mm, pet_mm):
         calibration_year_final=calibration_year_final,
         periodicity=periodicity,
     )
-    tmp = tmp.squeeze()  # When running in openeo this is needed
+    tmp = tmp.squeeze()
     tmp = tmp[np.newaxis].T
-    # Jan 6, 2024 @ 13:39:38.961	WARNING	spei_wrapped(...) tmp.shape: (1, 35, 1)
-    # Jan 6, 2024 @ 13:39:38.959	WARNING	spei_wrapped(...) tmp.shape: (35, 1)
-    # _log.warning("spei_wrapped(...) tmp.shape: " + str(tmp.shape))
     return tmp
 
 
 def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     array: xr.DataArray = cube.get_array()
 
-    # ['2_metre_dewpoint_temperature', 'surface_pressure', 'surface_solar_radiation_downwards', 'wind-speed',
-    # 'total_precipitation', 'temperature-min', 'temperature-mean', 'temperature-max']
     bands = [
         "2_metre_dewpoint_temperature",
         "surface_pressure",
@@ -81,33 +72,18 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
         tmp = array.sel(bands=band_index(band_name))
         kelvin_to_celsius_offset = 273.15
         if band_name == "2_metre_dewpoint_temperature":
-            scale_factor = 1
-            add_offset = 0
-            tmp = (tmp * scale_factor) + add_offset - kelvin_to_celsius_offset
+            tmp = tmp - kelvin_to_celsius_offset
         elif band_name == "surface_pressure":
-            scale_factor = 1
-            add_offset = 0
-            tmp = (tmp * scale_factor) + add_offset
             tmp = tmp * (pow(10, -3))  # The original units are Pa, we change them to KPa
         elif band_name == "surface_solar_radiation_downwards":
-            scale_factor = 1
-            add_offset = 0
-            tmp = (tmp * scale_factor) + add_offset
             tmp = tmp * pow(10, -6)  # The original units are J/m2, we change them to MJ/m2
         elif band_name == "total_precipitation":
-            scale_factor = 1
-            add_offset = 0
-            tmp = (tmp * scale_factor) + add_offset
             num_days_month = 30
             tmp = tmp * 1000 * num_days_month
         elif band_name == "10_metre_u_wind_component":
-            scale_factor = 1
-            add_offset = 0
-            tmp = (tmp * scale_factor) + add_offset
+            pass
         elif band_name == "10_metre_v_wind_component":
-            scale_factor = 1
-            add_offset = 0
-            tmp = (tmp * scale_factor) + add_offset
+            pass
         elif band_name == "temperature-min":
             tmp = tmp - kelvin_to_celsius_offset
         elif band_name == "temperature-mean":
@@ -118,10 +94,6 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
             raise Exception("Unknown band: " + band_name)
 
         return tmp
-
-    # bands2 = list(map(get_band, bands))
-    # spi_results = xr.concat(bands2, "bands")
-    # return XarrayDataCube(spi_results)
 
     try:
         array.sel(bands="2_metre_dewpoint_temperature")
@@ -134,17 +106,6 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
         _log.warning('SUCCEEDED : array.sel({"bands": 1}) ')
     except Exception as e:
         _log.warning('FAILED : array.sel({"bands": 1})' + repr(e))
-
-    # if True:
-    #     print("Debug!")
-    #     scaled_bands = []
-    #     for band_name in bands:
-    #         b = get_band(band_name)
-    #         scaled_bands.append(b)
-    #
-    #     # Concat all scaled_bands to one xarray:
-    #     scaled_bands = xr.concat(scaled_bands, "bands")
-    #     return XarrayDataCube(scaled_bands)
 
     # noinspection SpellCheckingInspection
     def get_pet_mm():
@@ -179,10 +140,8 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
 
         ea = 0.6108 * np.exp((17.27 * Tdew) / (Tdew + 237.3))  # actual vapour pressure kPa
 
-        pet_mm = (((0.408 * svpc) * (Rn - G)) + (psi_cnt * (900 / (Tmean + 273))) * u2 * (es - ea)) / (
+        return (((0.408 * svpc) * (Rn - G)) + (psi_cnt * (900 / (Tmean + 273))) * u2 * (es - ea)) / (
                 svpc + (psi_cnt * (1 + (0.34 * u2))))
-
-        return pet_mm
 
     precips_mm = get_band("total_precipitation").astype(np.dtype('float64'))
     pet_mm = get_pet_mm().astype(np.dtype('float64'))
@@ -195,52 +154,31 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     except Exception as e:
         _log.warning('FAILED: inspect(data=[precips_mm.variable], message="inspect precips_mm.variable") ' + repr(e))
 
+    precips_mm = precips_mm.squeeze(drop=True)
+    pet_mm = pet_mm.squeeze(drop=True)
     if os.path.exists('/dataCOPY/'):
         # when running locally
-        precips_mm = precips_mm.squeeze(drop=True)
-        pet_mm = pet_mm.squeeze(drop=True)
         precips_mm = precips_mm.drop_vars("variable")
         pet_mm = pet_mm.drop_vars("variable")
     else:
         # when running in openeo
-        precips_mm = precips_mm.squeeze(drop=True)
-        pet_mm = pet_mm.squeeze(drop=True)
-
         try:
             precips_mm = precips_mm.drop("bands")
             pet_mm = pet_mm.drop("bands")
             _log.warning('SUCCEEDED: precips_mm.drop("bands") ')
         except Exception as e:
-            _log.warning(
-                'FAILED: precips_mm.drop("bands") ' + repr(e))
-
-    inspect(data=[precips_mm], message="inspect precips_mm")
-
-    _log.warning(
-        "spei_wrapped(...) 4 precips_mm.shape: " + str(precips_mm.shape) + " precips_mm.dims :" + str(precips_mm.dims))
-    _log.warning("spei_wrapped(...) 4 pet_mm.shape: " + str(pet_mm.shape) + " pet_mm.dims :" + str(pet_mm.dims))
+            _log.warning('FAILED: precips_mm.drop("bands") ' + repr(e))
 
     precips_mm_grouped = precips_mm.stack(point=('y', 'x')).groupby('point', squeeze=True)
     pet_mm_grouped = pet_mm.stack(point=('y', 'x')).groupby('point', squeeze=True)
-
-    # if not precips_mm_grouped._group.equals(pet_mm_grouped._group):
-    #     _log.warning("COORDS: " + str(precips_mm_grouped._group.coords) + "\n -VS- \n" + str(pet_mm_grouped._group.coords))
-    #     raise ValueError(
-    #         "Emile: apply_ufunc can only perform operations over "
-    #         "multiple GroupBy objects at once if they are all "
-    #         "grouped the same way"
-    #     )
 
     # ValueError: apply_ufunc can only perform operations over multiple GroupBy objects at once if they are all grouped the same way
     spi_results = xr.apply_ufunc(spei_wrapped,
                                  precips_mm_grouped,
                                  pet_mm_grouped,
-                                 # input_core_dims=[["t"]],
-                                 # output_core_dims=[["t"]],
                                  )
 
     BAND_NAME = 'SPEI'
-    # spi_results = xr.DataArray(spi_results, dims=['y', 'x'])
     spi_results = spi_results.expand_dims(dim='bands', axis=0).assign_coords(bands=[BAND_NAME])
 
     spi_results = spi_results.unstack('point')
@@ -255,29 +193,16 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
 if __name__ == "__main__":
     print("Running test code!")
     import datetime
+    import rioxarray as rxr
 
     now = datetime.datetime.now()
 
-    # from pathlib import Path
-    # from openeo.udf import execute_local_udf
-    # smoothing_udf = Path(__file__).read_text()
-    # execute_local_udf(smoothing_udf, '/home/emile/openeo/drought-indices/SPEI/openEO.nc', fmt='netcdf')
-    # exit(0)
-
-    # Test code:
-    import rioxarray as rxr
-
-    # dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/era5_raw_bands_GMV.nc")
-    dataset = rxr.open_rasterio('/home/emile/Downloads/openEO (19).nc')
+    dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/era5_raw_bands_GMV.nc")
     if dataset.to_array().dims == ('variable', 'band', 'y', 'x'):
         array = dataset.to_array().swap_dims({"variable": "bands", "band": "t"})
     else:
         array = dataset.to_array().swap_dims({"variable": "bands"})
 
-    # Drop the last column of the array:
-    # array = array.isel(x=slice(2, -2)).isel(y=slice(2, -2))
-
-    # convert to float32:
     array = array.astype(np.float32)
 
     ret = apply_datacube(XarrayDataCube(array), dict())
@@ -291,5 +216,4 @@ if __name__ == "__main__":
         print("Taking only first time sample to avoid too many dimensions")
         arr = arr.isel(t=0)
     arr.rio.to_raster("tmp/out-" + str(now).replace(":", "_").replace(" ", "_") + ".nc")
-    # arr.to_netcdf("tmp/output_file.nc")
     print(ret)

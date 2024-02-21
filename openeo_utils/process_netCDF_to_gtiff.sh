@@ -6,7 +6,7 @@ infile=ERA5_monthly.nc
 # Hard coded band names:
 for band_name in tp d2m sp ssrd u10 v10; do
   band=1
-  # CDO is a collection of command line Operators to manipulate and analyse Climate and NWP model Data
+  # sudo apt-get install -y cdo
   for idate in $(cdo showdate $infile); do
     echo "band: $band"
     date="${idate:0:10}"

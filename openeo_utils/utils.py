@@ -1,4 +1,5 @@
 import datetime
+import glob
 import json
 import os
 from pathlib import Path
@@ -17,21 +18,47 @@ containing_folder = Path(__file__).parent
 
 def get_connection():
     # Possible backends:
-    url = "https://openeo-dev.vito.be"
+    # url = "https://openeo-dev.vito.be"
     # url = "https://openeo.vito.be"
-    # url = "https://openeo.cloud"
+    url = "https://openeo.cloud"
     connection = openeo.connect(url).authenticate_oidc()
     print(connection.root_url + " time: " + str(now))
     return connection
+
+
+def assert_glob_ok(glob_pattern: str):
+    if glob_pattern.startswith("/data/") or glob_pattern.startswith("/dataCOPY/"):
+        if os.path.exists("/dataCOPY/"):
+            glob_pattern = glob_pattern.replace("/data/", "/dataCOPY/")
+            # star_index = glob_pattern.find("*")
+            # slash_index = glob_pattern.rfind("/", 0, star_index)
+            glob_test = glob.glob(glob_pattern)
+            if not glob_test:
+                raise Exception("glob_pattern not found: " + glob_pattern)
+            return True
+    print("Could not verify GLOB pattern: " + glob_pattern)
+
+
+spatial_extent_south_africa = {
+    "west": 10,
+    "south": -40,
+    "east": 40,
+    "north": -20,
+}
+
+spatial_extent_johannesburg = {  # Johannesburg
+    "west": 27,
+    "south": -27,
+    "east": 30,
+    "north": -26,
+}
 
 
 def load_south_africa_shape() -> gpd.GeoDataFrame:
     """
     This can be used as a mask
     """
-    shape_df = gpd.read_file(
-        containing_folder / "shape/CNTR_RG_01M_2020_4326.shp"
-    )
+    shape_df = gpd.read_file(containing_folder / "shape/CNTR_RG_01M_2020_4326.shp")
 
     col_code = "ISO3_CODE"
     country_codes = ["ZAF", "LSO", "SWZ"]
@@ -53,9 +80,7 @@ def load_south_africa_shape() -> gpd.GeoDataFrame:
     # geodata_polygon = geodata_polygon.buffer(0.001)
     # geodata_polygon = geodata_polygon.simplify(0.005)
 
-    geodata_polygon = geodata_polygon.loc[
-        geodata_polygon.area > 0.0001
-    ]  # Remove tini islands
+    geodata_polygon = geodata_polygon.loc[geodata_polygon.area > 0.0001]  # Remove tini islands
 
     geodata_polygon = geodata_polygon.set_crs("EPSG:4326")
     return geodata_polygon
@@ -114,9 +139,12 @@ heavy_job_options = {
     #     "client-alias": 'vito'
     # },
 }
+medium_job_options = heavy_job_options.copy()
+medium_job_options["driver-memory"] = "10G"
+medium_job_options["executor-memory"] = "10G"
 
 
-def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_locally=False):
+def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_type="batch_job"):
     try:
         # os.system('find . -type d -empty -delete')  # better run manually
         import inspect
@@ -124,32 +152,16 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_loc
         parent_filename = inspect.stack()[1].filename  # HACK!
 
         with open(parent_filename, "r") as file:
-            job_description = (
-                "now: `" + str(now) + "` url: <" + datacube.connection.root_url + ">\n\n"
-            )
-            job_description += (
-                "python code: \n\n\n```python\n" + file.read() + "```\n\n"
-            )
+            job_description = "now: `" + str(now) + "` url: <" + datacube.connection.root_url + ">\n\n"
+            job_description += "python code: \n\n\n```python\n" + file.read() + "```\n\n"
 
         try:
             from git import Repo  # pip install GitPython
 
-            repo = Repo(
-                os.path.dirname(parent_filename), search_parent_directories=True
-            )
+            repo = Repo(os.path.dirname(parent_filename), search_parent_directories=True)
             job_description += "GIT URL: <" + list(repo.remotes[0].urls)[0] + ">\n\n"
-            job_description += (
-                "GIT branch: `"
-                + repo.active_branch.name
-                + "` commit: `"
-                + repo.active_branch.commit.hexsha
-                + "`\n\n"
-            )
-            job_description += (
-                "GIT changed files: "
-                + ", ".join(map(lambda x: x.a_path, repo.index.diff(None)))
-                + "\n"
-            )
+            job_description += "GIT branch: `" + repo.active_branch.name + "` commit: `" + repo.active_branch.commit.hexsha + "`\n\n"
+            job_description += "GIT changed files: " + ", ".join(map(lambda x: x.a_path, repo.index.diff(None))) + "\n"
         except Exception as e:
             print("Could not attach GIT info: " + str(e))
 
@@ -159,13 +171,11 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_loc
         output_dir.mkdir(parents=True, exist_ok=True)
         datacube.print_json(file=output_dir / "process_graph.json", indent=2)
         print(str(output_dir.absolute()) + "/")
-        if run_locally:
-            os.system(
-                "python /home/emile/openeo/openeo-geopyspark-driver/tests/integrations/test_run_graph_locally.py "
-                + str(output_dir / "process_graph.json")
-            )
-        else:
-            # datacube.download(os.path.basename(parent_filename) + ".nc")
+        if run_type == "local":
+            os.system("python /home/emile/openeo/openeo-geopyspark-driver/tests/integrations/test_run_graph_locally.py " + str(output_dir / "process_graph.json"))
+        elif run_type == "sync":
+            datacube.download(os.path.basename(parent_filename) + ".nc")
+        elif run_type == "batch_job":
             if job_options is None:
                 job_options = dict()
             if "filename_prefix" not in job_options:
@@ -183,6 +193,8 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_loc
                 f.write(job.job_id)
             job.start_and_wait()
             job.get_results().download_files(output_dir)
+        else:
+            raise Exception("Invalid run_type: " + run_type)
 
         # with open(output_dir / "logs.json", "w") as f:
         #     json.dump(job.logs(), f, indent=2)  # too often timeout
