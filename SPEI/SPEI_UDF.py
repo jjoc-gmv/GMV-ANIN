@@ -5,7 +5,7 @@ import xarray as xr
 import logging
 from openeo.udf import XarrayDataCube, inspect
 
-wheel_path = '/dataCOPY/users/Public/emile.sonneveld/python/climate_indices-1.0.13-py2.py3-none-any.whl'
+wheel_path = "/dataCOPY/users/Public/emile.sonneveld/python/climate_indices-1.0.13-py2.py3-none-any.whl"
 if not os.path.exists(wheel_path):
     wheel_path = wheel_path.replace("dataCOPY/", "data/")
     if not os.path.exists(wheel_path):
@@ -63,7 +63,7 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     def band_index(band_name):
         if band_name not in bands:
             raise Exception("Unknown band: " + band_name)
-        if os.path.exists('/dataCOPY/'):
+        if os.path.exists("/dataCOPY/"):
             return bands.index(band_name)  # when running locally
         else:
             return band_name  # when running in openeo
@@ -127,7 +127,7 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
 
         u10 = get_band("10_metre_u_wind_component")
         v10 = get_band("10_metre_v_wind_component")
-        u2 = ((u10 ** 2) + (v10 ** 2)) ** 0.5  # Getting wind component
+        u2 = ((u10**2) + (v10**2)) ** 0.5  # Getting wind component
 
         Tmin = get_band("temperature-min")
         Tmax = get_band("temperature-max")
@@ -141,10 +141,11 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
         ea = 0.6108 * np.exp((17.27 * Tdew) / (Tdew + 237.3))  # actual vapour pressure kPa
 
         return (((0.408 * svpc) * (Rn - G)) + (psi_cnt * (900 / (Tmean + 273))) * u2 * (es - ea)) / (
-                svpc + (psi_cnt * (1 + (0.34 * u2))))
+            svpc + (psi_cnt * (1 + (0.34 * u2)))
+        )
 
-    precips_mm = get_band("total_precipitation").astype(np.dtype('float64'))
-    pet_mm = get_pet_mm().astype(np.dtype('float64'))
+    precips_mm = get_band("total_precipitation").astype(np.dtype("float64"))
+    pet_mm = get_pet_mm().astype(np.dtype("float64"))
 
     inspect(data=[precips_mm], message="inspect precips_mm")
 
@@ -156,7 +157,7 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
 
     precips_mm = precips_mm.squeeze(drop=True)
     pet_mm = pet_mm.squeeze(drop=True)
-    if os.path.exists('/dataCOPY/'):
+    if os.path.exists("/dataCOPY/"):
         # when running locally
         precips_mm = precips_mm.drop_vars("variable")
         pet_mm = pet_mm.drop_vars("variable")
@@ -169,22 +170,23 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
         except Exception as e:
             _log.warning('FAILED: precips_mm.drop("bands") ' + repr(e))
 
-    precips_mm_grouped = precips_mm.stack(point=('y', 'x')).groupby('point', squeeze=True)
-    pet_mm_grouped = pet_mm.stack(point=('y', 'x')).groupby('point', squeeze=True)
+    precips_mm_grouped = precips_mm.stack(point=("y", "x")).groupby("point", squeeze=True)
+    pet_mm_grouped = pet_mm.stack(point=("y", "x")).groupby("point", squeeze=True)
 
     # ValueError: apply_ufunc can only perform operations over multiple GroupBy objects at once if they are all grouped the same way
-    spi_results = xr.apply_ufunc(spei_wrapped,
-                                 precips_mm_grouped,
-                                 pet_mm_grouped,
-                                 )
+    spi_results = xr.apply_ufunc(
+        spei_wrapped,
+        precips_mm_grouped,
+        pet_mm_grouped,
+    )
 
-    BAND_NAME = 'SPEI'
-    spi_results = spi_results.expand_dims(dim='bands', axis=0).assign_coords(bands=[BAND_NAME])
+    BAND_NAME = "SPEI"
+    spi_results = spi_results.expand_dims(dim="bands", axis=0).assign_coords(bands=[BAND_NAME])
 
-    spi_results = spi_results.unstack('point')
-    spi_results = spi_results.rename({'y': 'lat', 'x': 'lon'})  # Necessary step
-    spi_results = spi_results.reindex(lat=list(reversed(spi_results['lat'])))
-    spi_results = spi_results.rename({'lat': 'y', 'lon': 'x'})
+    spi_results = spi_results.unstack("point")
+    spi_results = spi_results.rename({"y": "lat", "x": "lon"})  # Necessary step
+    spi_results = spi_results.reindex(lat=list(reversed(spi_results["lat"])))
+    spi_results = spi_results.rename({"lat": "y", "lon": "x"})
 
     # No need to specify crs here
     return XarrayDataCube(spi_results)
@@ -198,7 +200,7 @@ if __name__ == "__main__":
     now = datetime.datetime.now()
 
     dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPEI/era5_raw_bands_GMV.nc")
-    if dataset.to_array().dims == ('variable', 'band', 'y', 'x'):
+    if dataset.to_array().dims == ("variable", "band", "y", "x"):
         array = dataset.to_array().swap_dims({"variable": "bands", "band": "t"})
     else:
         array = dataset.to_array().swap_dims({"variable": "bands"})

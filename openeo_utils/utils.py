@@ -2,6 +2,7 @@ import datetime
 import glob
 import json
 import os
+import sys
 from pathlib import Path
 
 import geopandas as gpd
@@ -54,6 +55,15 @@ spatial_extent_johannesburg = {  # Johannesburg
 }
 
 
+def get_temporal_extent_from_argv(default):
+    if len(sys.argv) >= 3:
+        ret = [sys.argv[1], sys.argv[2]]
+        print("Using time range arguments from arguments: " + repr(ret))
+        return ret
+    else:
+        return default
+
+
 def load_south_africa_shape() -> gpd.GeoDataFrame:
     """
     This can be used as a mask
@@ -73,7 +83,10 @@ def load_south_africa_shape() -> gpd.GeoDataFrame:
     geodata_polygon = gpd.GeoDataFrame(geometry=[unioned_polygon])
 
     # OpenEO also prefers list of Polygons compared to a giant multipolygon
-    geodata_polygon = geodata_polygon.explode()  # index_parts=True
+    if gpd.__version__ == "0.13.2":  # Versions after probably need index_parts too
+        geodata_polygon = geodata_polygon.explode(index_parts=True)
+    else:
+        geodata_polygon = geodata_polygon.explode()
 
     # Simplify to avoid "Trying to construct a datacube with a bounds Extent(....) that is not entirely inside the global bounds..."
     geodata_polygon = gpd.GeoDataFrame(geometry=geodata_polygon.simplify(0.011))
@@ -139,9 +152,6 @@ heavy_job_options = {
     #     "client-alias": 'vito'
     # },
 }
-medium_job_options = heavy_job_options.copy()
-medium_job_options["driver-memory"] = "10G"
-medium_job_options["executor-memory"] = "10G"
 
 
 def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_type="batch_job"):
@@ -174,7 +184,7 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_typ
         if run_type == "local":
             os.system("python /home/emile/openeo/openeo-geopyspark-driver/tests/integrations/test_run_graph_locally.py " + str(output_dir / "process_graph.json"))
         elif run_type == "sync":
-            datacube.download(os.path.basename(parent_filename) + ".nc")
+            datacube.download(output_dir / (os.path.basename(parent_filename) + ".nc"))
         elif run_type == "batch_job":
             if job_options is None:
                 job_options = dict()
@@ -216,12 +226,7 @@ def download_existing_job(job_id: str, conn: "openeo.Connection"):
     import inspect
 
     parent_filename = inspect.stack()[1].filename  # HACK!
-    output_dir = (
-        Path(
-            os.path.dirname(parent_filename),
-        )
-        / job_id
-    )
+    output_dir = Path(os.path.dirname(parent_filename)) / job_id
     output_dir.mkdir(parents=True, exist_ok=True)
 
     job.get_results().download_files(output_dir)

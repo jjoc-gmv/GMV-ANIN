@@ -23,7 +23,15 @@ python3 -m SPI.SPI_openeo
 python3 -m VCI.VCI_openeo
 ```
 
+To specify a specific temporal extent:
+```bash
+python3 -m VCI.VCI_openeo "2022-11-01" "2022-01-01"
+```
+
 ## Notes
 
-OpenEO code formatted with 'Black', default settings
+Format code:
+```bash
+black --line-length 120 */*_openeo.py */*_UDF.py
+```
 Example output files can be found here: https://gmvdrive.gmv.com/index.php/s/oLj4moSZ2Ez5G5P?path=%2F

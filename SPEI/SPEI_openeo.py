@@ -28,18 +28,18 @@ band_dictionary = [
     {
         "agera5_name": "wind-speed",
         # "era5land_name": ['10m_u_component_of_wind', '10m_v_component_of_wind'],  # Johan
-        "era5land_name": ['10_metre_u_wind_component', '10_metre_v_wind_component'],  # Emile
-        "gmv_name": ['u10', 'v10'],
+        "era5land_name": ["10_metre_u_wind_component", "10_metre_v_wind_component"],  # Emile
+        "gmv_name": ["u10", "v10"],
     },
     {
         "agera5_name": "wind-speed U",
-        "era5land_name": '10_metre_u_wind_component',
-        "gmv_name": 'u10',
+        "era5land_name": "10_metre_u_wind_component",
+        "gmv_name": "u10",
     },
     {
         "agera5_name": "wind-speed V",
-        "era5land_name": '10_metre_v_wind_component',
-        "gmv_name": 'v10',
+        "era5land_name": "10_metre_v_wind_component",
+        "gmv_name": "v10",
     },
     {
         "agera5_name": "precipitation-flux",
@@ -77,7 +77,6 @@ def get_era5land_band_johan(agera5_name):
         options=dict(date_regex=r".*_(\d{4})(\d{2})(\d{2}).tif"),
     )
     load_collection = tmp.rename_labels("bands", [agera5_name]) * 1.0
-    load_collection._pg.arguments['featureflags'] = {"tilesize": 32}
     return load_collection
 
 
@@ -106,7 +105,6 @@ def get_era5land_band_ANIN(agera5_name):
     )
     load_collection = load_collection.rename_labels("bands", [era5land_name])
     load_collection *= 1.0
-    load_collection._pg.arguments['featureflags'] = {"tilesize": 16}
     return load_collection
 
 
@@ -123,7 +121,11 @@ def get_era5land_band(agera5_name):
         band_name = era5land_name
 
     assert era5land_name is not None
-    glob_pattern = "/data/users/Public/emile.sonneveld/ERA5-Land-monthly-averaged-data-v3/tiff_collection/*/*/*/*_" + era5land_name + ".tiff"
+    glob_pattern = (
+        "/data/users/Public/emile.sonneveld/ERA5-Land-monthly-averaged-data-v3/tiff_collection/*/*/*/*_"
+        + era5land_name
+        + ".tiff"
+    )
     assert_glob_ok(glob_pattern)
 
     # * 1.0 to avoid: "class geotrellis.raster.FloatCellType$ cannot be cast to class geotrellis.raster.HasNoData"
@@ -132,18 +134,23 @@ def get_era5land_band(agera5_name):
         # Based on https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land-monthly-means
         glob_pattern=glob_pattern,
         options=dict(date_regex=r".*tiff_collection/(\d{4})/(\d{2})/(\d{2})/.*"),
-    ).rename_labels("bands", [band_name])  # * 1.0
-    load_collection._pg.arguments['featureflags'] = {"tilesize": 16}
+    ).rename_labels(
+        "bands", [band_name]
+    )  # * 1.0
+    load_collection._pg.arguments["featureflags"] = {"tilesize": 16}
     return load_collection
 
 
 def get_agera5_band(band):
-    return connection.load_collection(
-        "AGERA5",
-        temporal_extent=temporal_extent,
-        spatial_extent=spatial_extent,
-        bands=[band],
-    ) * 1.0
+    return (
+        connection.load_collection(
+            "AGERA5",
+            temporal_extent=temporal_extent,
+            spatial_extent=spatial_extent,
+            bands=[band],
+        )
+        * 1.0
+    )
 
 
 kelvin_to_celsius_offset = -273.15
@@ -170,11 +177,13 @@ ERA5_dc = ERA5_dc.filter_spatial(geojson)
 SPEI_dc = ERA5_dc.apply_dimension(dimension="t", code=UDF_code, runtime="Python")
 SPEI_dc = SPEI_dc.rename_labels("bands", ["SPEI"])
 
-if __name__ == "__main__":
-    # Sometimes got errors like this:
-    # Trying to construct a datacube with a bounds Extent(16.448304, -46.981234, 38.002543, -22.12718) that is not entirely inside the global bounds: Extent(9.949999999999989, -40.05, 40.05000000000001, -19.94999999999999)
 
-    # SPEI_dc = SPEI_dc.filter_temporal("1970-01-01", "2023-01-01")
-    custom_execute_batch(SPEI_dc, heavy_job_options, out_format="netcdf")
+def main(temporal_extent_argument):
+    global SPEI_dc
+    SPEI_dc = SPEI_dc.filter_temporal(temporal_extent_argument)
+    custom_execute_batch(SPEI_dc, job_options=heavy_job_options)
     # custom_execute_batch(ERA5_dc, out_format="netcdf")
-    pass
+
+
+if __name__ == "__main__":
+    main(get_temporal_extent_from_argv(temporal_extent))

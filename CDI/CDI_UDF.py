@@ -1,8 +1,5 @@
 import logging
-import numpy as np
-import os
-import rasterio
-import sys
+
 import xarray as xr
 from openeo.udf import XarrayDataCube
 
@@ -12,9 +9,9 @@ _log = logging.getLogger("CDI_UDF.py")
 def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     array = cube.get_array()
 
-    SPI_band = array[0]
-    SPI_previous_month_band = array[1]
-    SMA_band = array[2]
+    SMA_band = array[0]
+    SPI_band = array[1]
+    SPI_previous_month_band = array[2]
     FAPAR_Anomaly_band = array[3]
 
     # Watch class: when SPI-3 is less than -1 and make no data as 0

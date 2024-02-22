@@ -4,7 +4,7 @@ from openeo_utils.utils import *
 connection = get_connection()
 
 band = "NDVI"
-temporal_extent = ["2020-07-01", "2023-05-01"]
+temporal_extent = ["2020-07-01", None]
 spatial_extent = spatial_extent_south_africa
 
 CGLS_NDVI300_V2_GLOBAL_dc = connection.load_collection(
@@ -18,14 +18,6 @@ CGLS_NDVI300_V2_GLOBAL_dc = CGLS_NDVI300_V2_GLOBAL_dc.aggregate_temporal_period(
 scale_factor = 0.004
 add_offset = -0.08
 CGLS_NDVI300_V2_GLOBAL_dc = (CGLS_NDVI300_V2_GLOBAL_dc * scale_factor) + add_offset
-
-# glob_pattern = f"/data/users/Public/emile.sonneveld/ANIN/CROP_MASK/*.tif"
-# assert_glob_ok(glob_pattern)
-# mask = connection.load_disk_collection(
-#     format="GTiff",
-#     glob_pattern=glob_pattern,
-#     options=dict(date_regex=r".*(\d{4})-(\d{2})-(\d{2}).*"),
-# ).filter_bbox(spatial_extent).filter_temporal(temporal_extent)
 
 phenology_mask = connection.load_stac(
     "/data/users/Public/emile.sonneveld/ANIN/CROP_MASK/CROP_MASK_STAC/collection.json",
@@ -49,10 +41,12 @@ geojson = load_south_africa_geojson()
 # geojson = load_johannesburg_geojson()
 VCI_dc = VCI_dc.filter_spatial(geojson)
 
+
+def main(temporal_extent_argument):
+    global VCI_dc
+    VCI_dc = VCI_dc.filter_temporal(temporal_extent_argument)
+    custom_execute_batch(VCI_dc, job_options=heavy_job_options)  # , out_format="NetCDF", run_type="sync")
+
+
 if __name__ == "__main__":
-    VCI_dc = VCI_dc.filter_temporal(temporal_extent)
-    # VCI_dc = VCI_dc.filter_temporal("2020-07-01", "2020-07-30")
-    custom_execute_batch(VCI_dc, job_options=heavy_job_options)
-    # custom_execute_batch(CGLS_NDVI300_V2_GLOBAL_dc, out_format="netcdf", job_options=heavy_job_options, run_type="sync")  # OK
-    # custom_execute_batch(MODIS_MAX_dc, out_format="netcdf", job_options=heavy_job_options, run_type="batch_job")  # okish
-    # custom_execute_batch(MODIS_MIN_dc, out_format="netcdf", job_options=heavy_job_options, run_type="sync")  # okish
+    main(get_temporal_extent_from_argv(["2020-07-01", "2023-05-01"]))
