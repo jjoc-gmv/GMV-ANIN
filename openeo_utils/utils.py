@@ -16,12 +16,15 @@ now = datetime.datetime.now()
 
 containing_folder = Path(__file__).parent
 
-
+connection = None
 def get_connection():
+    global connection
+    if connection is not None:
+        return connection
     # Possible backends:
-    # url = "https://openeo-dev.vito.be"
+    url = "https://openeo-dev.vito.be"
     # url = "https://openeo.vito.be"
-    url = "https://openeo.cloud"
+    # url = "https://openeo.cloud"
     connection = openeo.connect(url).authenticate_oidc()
     print(connection.root_url + " time: " + str(now))
     return connection
@@ -127,30 +130,20 @@ def load_udf(udf):
 false = False
 true = True
 heavy_job_options = {
-    "driver-memory": "20G",
+    "driver-memory": "10G",
     "driver-memoryOverhead": "5G",
     "driver-cores": "1",
-    "executor-memory": "20G",
+    "executor-memory": "10G",
     "executor-memoryOverhead": "5G",
     "executor-cores": "1",
     "executor-request-cores": "600m",
     "max-executors": "22",
     "executor-threads-jvm": "7",
-    "udf-dependency-archives": [
-        "https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/croptype_models/20230615T144208-24ts-hrlvlcc-v200.zip#tmp/model",
-        "https://artifactory.vgt.vito.be:443/auxdata-public/hrlvlcc/openeo-dependencies/cropclass-1.0.5-20230810T154836.zip#tmp/cropclasslib",
-        "https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/openeo-dependencies/vitocropclassification-1.4.0-20230619T091529.zip#tmp/vitocropclassification",
-        "https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/openeo-dependencies/hrl.zip#tmp/venv_static",
-        # 'https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/hrl-temp.zip#tmp/venv',
-        # 'https://artifactory.vgt.vito.be/auxdata-public/hrlvlcc/hrl.zip#tmp/venv_static',
-    ],
-    "logging-threshold": "debug",
+    "udf-dependency-archives": [],
+    "logging-threshold": "info",
     "mount_tmp": false,  # or true
     "goofys": "false",
     "node_caching": true,
-    # "sentinel-hub": {
-    #     "client-alias": 'vito'
-    # },
 }
 
 
@@ -179,6 +172,7 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_typ
             os.path.dirname(parent_filename),
         ) / ("out-" + str(now).replace(":", "_").replace(" ", "_"))
         output_dir.mkdir(parents=True, exist_ok=True)
+        print("output_dir=" + str(output_dir))
         datacube.print_json(file=output_dir / "process_graph.json", indent=2)
         print(str(output_dir.absolute()) + "/")
         if run_type == "local":
@@ -200,7 +194,8 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_typ
                 job_options=job_options,
             )
             with open(output_dir / "job_id.txt", mode="w") as f:
-                f.write(job.job_id)
+                f.write(job.job_id + "\n")
+                f.write(datacube.connection.root_url + "\n")
             job.start_and_wait()
             job.get_results().download_files(output_dir)
         else:

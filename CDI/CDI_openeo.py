@@ -5,15 +5,12 @@ from SMA.SMA_openeo import SMA_dc
 from SPI.SPI_openeo import SPI_dc, SPI_previous_month_dc
 from openeo_utils.utils import *
 
-temporal_extent = [
-    "2020-01-01",  # Only what's needed for CDI
-    None,
-]
+temporal_extent = get_temporal_extent_from_argv(["2023-08-01", "2023-09-01"])
 
 merged_dc = FAPAR_anomaly_dc
-merged_dc = merged_dc.merge_cubes(SPI_dc)
-merged_dc = merged_dc.merge_cubes(SPI_previous_month_dc)
-merged_dc = merged_dc.merge_cubes(SMA_dc)
+merged_dc = merged_dc.merge_cubes(SPI_dc.filter_temporal(temporal_extent))
+merged_dc = merged_dc.merge_cubes(SPI_previous_month_dc.filter_temporal(temporal_extent))
+merged_dc = merged_dc.merge_cubes(SMA_dc.filter_temporal(temporal_extent))
 merged_dc = merged_dc.filter_temporal(temporal_extent)
 
 udf_code = load_udf(os.path.join(os.path.dirname(__file__), "CDI_UDF.py"))
@@ -36,10 +33,13 @@ def main(temporal_extent_argument):
     global CDI_dc
     CDI_dc = CDI_dc.filter_temporal(temporal_extent_argument)
 
-    custom_execute_batch(CDI_dc, job_options=heavy_job_options)
+    # out_format = "NetCDF"
+    out_format = "GTiff"
+    CDI_dc = CDI_dc.save_result(format=out_format)
+    custom_execute_batch(CDI_dc, job_options=heavy_job_options, out_format=out_format)  # , run_type="sync"
     # custom_execute_batch(merged_dc, out_format="netcdf",job_options=heavy_job_options)
 
 
 if __name__ == "__main__":
     print("WARNING, this script is not finished")
-    main(get_temporal_extent_from_argv(["2020-01-01", "2023-09-01"]))
+    main(temporal_extent)

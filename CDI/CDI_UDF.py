@@ -9,10 +9,10 @@ _log = logging.getLogger("CDI_UDF.py")
 def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     array = cube.get_array()
 
-    SMA_band = array[0]
+    FAPAR_Anomaly_band = array[0]
     SPI_band = array[1]
     SPI_previous_month_band = array[2]
-    FAPAR_Anomaly_band = array[3]
+    SMA_band = array[3]
 
     # Watch class: when SPI-3 is less than -1 and make no data as 0
     CDI = xr.where(SPI_band < -1, 1, 0)

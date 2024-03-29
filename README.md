@@ -16,16 +16,16 @@ More instructions here: https://open-eo.github.io/openeo-python-client/installat
 ## Running:
 
 ```bash
-python3 -m CDI.CDI_openeo
-python3 -m FAPAR_Anomaly.FAPAR_Anomaly_openeo
 python3 -m SMA.SMA_openeo
 python3 -m SPI.SPI_openeo
+python3 -m SPEI.SPEI_openeo
 python3 -m VCI.VCI_openeo
+python3 -m FAPAR_Anomaly.FAPAR_Anomaly_openeo
 ```
 
-To specify a specific temporal extent:
+For every layer you can overwrite the temporal extent. for CDI it is required as it is a more heavy one:
 ```bash
-python3 -m VCI.VCI_openeo "2022-11-01" "2022-01-01"
+python3 -m CDI.CDI_openeo "2020-01-01" "2023-01-01"
 ```
 
 ## Notes

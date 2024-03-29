@@ -68,7 +68,7 @@ def get_era5land_band_johan(agera5_name):
     if isinstance(era5land_name, list):
         raise Exception("Not implemented")
     assert era5land_name is not None
-    glob_pattern = f"/data/users/Public/johan.schreurs/ANIN/reanalysis-era5-land_southafrica_float32/*/reanalysis-era5-land_{era5land_name}_*.tif"
+    glob_pattern = f"/data/users/Public/emile.sonneveld/ANIN/johan/reanalysis-era5-land_southafrica_float32/*/reanalysis-era5-land_{era5land_name}_*.tif"
     assert_glob_ok(glob_pattern)
 
     tmp = connection.load_disk_collection(

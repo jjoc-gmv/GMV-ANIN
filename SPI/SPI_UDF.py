@@ -77,35 +77,35 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     spi_results = spi_results.reindex(lat=list(reversed(spi_results["lat"])))
     spi_results = spi_results.rename({"lat": "y", "lon": "x"})
     # No need to specify crs here
-    return XarrayDataCube(spi_results)
+    return XarrayDataCube(spi_results.astype(np.float32))
 
 
-if __name__ == "__main__":
-    print("Running test code!")
-    import datetime
-    import rioxarray as rxr
-
-    now = datetime.datetime.now()
-
-    dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPI/out-2024-02-20_19_10_33.970882/openEO.nc")
-    if dataset.dims == ("variable", "band", "y", "x"):
-        array = dataset.swap_dims({"variable": "bands", "band": "t"})
-    elif dataset.dims == ("band", "y", "x"):
-        array = dataset.swap_dims({"band": "t"})
-    else:
-        array = dataset.swap_dims({"variable": "bands"})
-
-    array = array.astype(np.float32)
-
-    ret = apply_datacube(XarrayDataCube(array), dict())
-    arr = ret.array
-    data_crs = dataset.rio.crs
-    arr.rio.write_crs(data_crs, inplace=True)
-    arr = arr.squeeze()  # remove unneeded dimensions
-    # First timeframes are NaN, which is confusing, as it shows nothing in Q-GIS. Drop them:
-    arr = arr.dropna(dim="t", how="all")  # Might be nice to only trim beginning and end, in all dimensions
-    if len(arr.dims) > 3:
-        print("Taking only first time sample to avoid too many dimensions")
-        arr = arr.isel(t=0)
-    arr.rio.to_raster("tmp/out-" + str(now).replace(":", "_").replace(" ", "_") + ".nc")
-    print(ret)
+# if __name__ == "__main__":
+#     print("Running test code!")
+#     import datetime
+#     import rioxarray as rxr
+#
+#     now = datetime.datetime.now()
+#
+#     dataset = rxr.open_rasterio("/home/emile/openeo/drought-indices/SPI/out-2024-02-27_15_59_34.228187/openEO.nc")
+#     if dataset.dims == ("variable", "band", "y", "x"):
+#         array = dataset.swap_dims({"variable": "bands", "band": "t"})
+#     elif dataset.dims == ("band", "y", "x"):
+#         array = dataset.swap_dims({"band": "t"})
+#     else:
+#         array = dataset.swap_dims({"variable": "bands"})
+#
+#     array = array.astype(np.float32)
+#
+#     ret = apply_datacube(XarrayDataCube(array), dict())
+#     arr = ret.array
+#     data_crs = dataset.rio.crs
+#     arr.rio.write_crs(data_crs, inplace=True)
+#     arr = arr.squeeze()  # remove unneeded dimensions
+#     # First timeframes are NaN, which is confusing, as it shows nothing in Q-GIS. Drop them:
+#     arr = arr.dropna(dim="t", how="all")  # Might be nice to only trim beginning and end, in all dimensions
+#     if len(arr.dims) > 3:
+#         print("Taking only first time sample to avoid too many dimensions")
+#         arr = arr.isel(t=0)
+#     arr.rio.to_raster("tmp/out-" + str(now).replace(":", "_").replace(" ", "_") + ".nc")
+#     print(ret)
