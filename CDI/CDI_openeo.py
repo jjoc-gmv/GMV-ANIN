@@ -7,11 +7,22 @@ from openeo_utils.utils import *
 
 temporal_extent = get_temporal_extent_from_argv(["2023-08-01", "2023-09-01"])
 
-merged_dc = FAPAR_anomaly_dc
-merged_dc = merged_dc.merge_cubes(SPI_dc.filter_temporal(temporal_extent))
-merged_dc = merged_dc.merge_cubes(SPI_previous_month_dc.filter_temporal(temporal_extent))
-merged_dc = merged_dc.merge_cubes(SMA_dc.filter_temporal(temporal_extent))
+resolution = 0.00297619047619  # 300m in degrees
+SPI_dc = SPI_dc.filter_temporal(temporal_extent)
+SPI_dc = SPI_dc.resample_spatial(resolution=resolution, projection=4326, method="bilinear")
+
+SPI_previous_month_dc = SPI_previous_month_dc.filter_temporal(temporal_extent)
+SPI_previous_month_dc = SPI_previous_month_dc.resample_spatial(resolution=resolution, projection=4326, method="bilinear")
+
+SMA_dc = SMA_dc.filter_temporal(temporal_extent)
+SMA_dc = SMA_dc.resample_spatial(resolution=resolution, projection=4326, method="bilinear")
+
+merged_dc = FAPAR_anomaly_dc.filter_temporal(temporal_extent)
+merged_dc = merged_dc.merge_cubes(SPI_dc)
+merged_dc = merged_dc.merge_cubes(SPI_previous_month_dc)
+merged_dc = merged_dc.merge_cubes(SMA_dc)
 merged_dc = merged_dc.filter_temporal(temporal_extent)
+
 
 udf_code = load_udf(os.path.join(os.path.dirname(__file__), "CDI_UDF.py"))
 CDI_dc = merged_dc.reduce_dimension(
@@ -41,5 +52,7 @@ def main(temporal_extent_argument):
 
 
 if __name__ == "__main__":
-    print("WARNING, this script is not finished")
+    print("WARNING, this script is work in progress")
+    if len(sys.argv) < 3:
+        raise Exception("Please provide start and end date as arguments")
     main(temporal_extent)

@@ -12,11 +12,6 @@ load_collection = connection.load_stac(
     bands=["total_precipitation"],
 )
 ERA5_dc = load_collection
-ERA5_dc = ERA5_dc.filter_temporal(temporal_extent)
-
-# resolution = 0.00297619047619  # 300m in degrees LatLon
-# ERA5_dc = ERA5_dc.resample_spatial(resolution=resolution, projection=4326)
-# ERA5_dc *= 1.0
 
 geojson = load_south_africa_geojson()
 # geojson = load_johannesburg_geojson()
@@ -29,19 +24,22 @@ SPI_dc = SPI_dc.rename_labels("bands", ["SPI"])
 previous_month_UDF_code = load_udf(os.path.join(os.path.dirname(__file__), "previous_month_UDF.py"))
 SPI_previous_month_dc = SPI_dc.apply_dimension(dimension="t", code=previous_month_UDF_code, runtime="Python")
 SPI_previous_month_dc = SPI_previous_month_dc.rename_labels("bands", ["SPI_previous_month"])
+SPI_previous_month_dc = SPI_previous_month_dc.filter_temporal(temporal_extent)
+
+SPI_dc = SPI_dc.filter_temporal(temporal_extent)
 
 
 def main(temporal_extent_argument):
     global SPI_dc
-    SPI_dc = SPI_dc.filter_temporal(temporal_extent_argument)
-    # resolution = 0.00297619047619  # 300m in degrees
-    # SPI_dc = SPI_dc.resample_spatial(resolution=resolution, projection=4326)  # comment out to avoid OOM
+    dc = SPI_previous_month_dc
+    dc = dc.filter_temporal(temporal_extent_argument)
+    resolution = 0.00297619047619  # 300m in degrees
+    dc = dc.resample_spatial(resolution=resolution, projection=4326, method="bilinear")
 
     # out_format = "NetCDF"
     out_format = "GTiff"
-    SPI_dc = SPI_dc.save_result(format=out_format)
-    custom_execute_batch(SPI_dc, job_options=heavy_job_options, out_format=out_format)
-    # custom_execute_batch(load_collection_stac)
+    dc = dc.save_result(format=out_format)
+    custom_execute_batch(dc, job_options=heavy_job_options, out_format=out_format)
     # custom_execute_batch(ERA5_dc, out_format="netCDF")
 
 

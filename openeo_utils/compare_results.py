@@ -117,8 +117,8 @@ def MSE(a, b):
 # arrOEO = "/home/emile/openeo/drought-indices/SPEI/out-2024-02-14_10_22_46.460937/openEO.nc"
 # arrGMV = "/home/emile/Desktop/ToShareWithVito/SPEI/outputs/SPEI3.nc"
 
-tiff_path_gmv = "/home/emile/Desktop/ToShareWithVito/SPI/outputs/nc_to_tiffs/2022-01-01_.tiff"
-tiff_path_oeo = "/home/emile/openeo/drought-indices/SPEI/out-2024-02-27_12_27_06.508531/openEO_2022-01-01Z.tif"
+# tiff_path_gmv = "/home/emile/Desktop/ToShareWithVito/SPI/outputs/nc_to_tiffs/2022-01-01_.tiff"
+# tiff_path_oeo = "/home/emile/openeo/drought-indices/SPEI/out-2024-02-27_12_27_06.508531/openEO_2022-01-01Z.tif"
 
 # tiff_path_gmv = "/home/emile/Desktop/ToShareWithVito/SPI/outputs/nc_to_tiffs/2022-01-01_.tiff"
 # tiff_path_oeo = "/home/emile/openeo/drought-indices/SPI/out-2024-02-21_22_40_39.195282/openEO_2022-01-01Z.tif"
@@ -126,9 +126,13 @@ tiff_path_oeo = "/home/emile/openeo/drought-indices/SPEI/out-2024-02-27_12_27_06
 # tiff_path_gmv = "/home/emile/Desktop/ToShareWithVito/SPI/outputs/nc_to_tiffs/2020-01-01_.tiff"
 # tiff_path_oeo = "/home/emile/openeo/drought-indices/SPI/out-2024-02-21_22_40_39.195282/openEO_2020-01-01Z.tif"
 
+tiff_path_gmv = "/home/emile/Desktop/ToShareWithVito/CDI/Sample output/2021-09-01_CDI.tif"
+tiff_path_oeo = "/home/emile/openeo/drought-indices/CDI/out-2024-04-02_01_00_42.812426/openEO_2021-09-01Z.tif"
+
 print(f"{tiff_path_gmv=}")
 print(f"{tiff_path_oeo=}")
 
+# Avoid 'DataArray' object has no attribute 'set_close' by changing the code in the open_rasterio method
 arrGMV = rioxarray.open_rasterio(tiff_path_gmv)
 arrOEO = rioxarray.open_rasterio(tiff_path_oeo)
 
@@ -159,11 +163,19 @@ arrOEO = arrOEO[~mask]
 arrGMV = arrGMV[~mask]
 
 # When taking more than 172480 elements, numpy mean will return inf
-arrOEO = arrOEO[:111000]
-arrGMV = arrGMV[:111000]
+# arrOEO = arrOEO[:111000]
+# arrGMV = arrGMV[:111000]
 
 print(f"{MSE(arrOEO, arrGMV)=}")
 print(f"{np.linalg.norm(arrOEO-arrGMV)=}")
+
+def dice_coefficient(y_true, y_pred):
+    intersection = np.sum(y_true * y_pred)
+    return (2. * intersection) / (np.sum(y_true) + np.sum(y_pred))
+
+
+dice = dice_coefficient(arrOEO == arrGMV, np.repeat(1, len(arrOEO)))
+print('Dice similarity score is {}'.format(dice))  # CDI: 97%
 
 # Check correlation: (a good match should be 0.9999999...)
 # VCI has 0.8

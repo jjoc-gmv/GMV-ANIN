@@ -23,7 +23,7 @@ python3 -m VCI.VCI_openeo
 python3 -m FAPAR_Anomaly.FAPAR_Anomaly_openeo
 ```
 
-For every layer you can overwrite the temporal extent. for CDI it is required as it is a more heavy one:
+For every layer you can overwrite the temporal extent. For CDI it is required for performance:
 ```bash
 python3 -m CDI.CDI_openeo "2020-01-01" "2023-01-01"
 ```

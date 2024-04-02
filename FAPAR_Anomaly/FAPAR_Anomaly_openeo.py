@@ -16,6 +16,7 @@ lc = connection.load_collection(
 )
 CGLS_FAPAR300_V1_GLOBAL_dc = (
     lc.aggregate_temporal_period("month", reducer="mean")
+    .filter_temporal(temporal_extent)
     # Linearly interpolate missing values. To avoid protobuf error.
     .apply_dimension(
         dimension="t",
@@ -65,7 +66,8 @@ def main(temporal_extent_argument):
     out_format = "GTiff"
     dc = FAPAR_anomaly_dc
     dc = dc.save_result(format=out_format)
-    custom_execute_batch(dc, out_format=out_format, run_type="batch_job")
+    # custom_execute_batch(dc, out_format=out_format, run_type="batch_job")
+    custom_execute_batch(CGLS_FAPAR300_V1_GLOBAL_dc, out_format=out_format, run_type="batch_job")
 
 
 if __name__ == "__main__":
