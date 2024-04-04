@@ -22,9 +22,9 @@ def get_connection():
     if connection is not None:
         return connection
     # Possible backends:
-    url = "https://openeo-dev.vito.be"
+    # url = "https://openeo-dev.vito.be"
     # url = "https://openeo.vito.be"
-    # url = "https://openeo.cloud"
+    url = "https://openeo.cloud"
     connection = openeo.connect(url).authenticate_oidc()
     print(connection.root_url + " time: " + str(now))
     return connection

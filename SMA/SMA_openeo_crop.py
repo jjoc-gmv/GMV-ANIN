@@ -20,7 +20,7 @@ SMA_dc = SMA_dc.rename_labels("bands", ["SMA"])
 
 if __name__ == "__main__":
     start = f"2020-01-01"
-    end = f"2023-09-01"
+    end = f"2024-02-01"
     SMA_dc = SMA_dc.filter_temporal([start, end])
     resolution = 0.00297619047619  # 300m in degrees
     SMA_dc = SMA_dc.resample_spatial(resolution=resolution, projection=4326, method="bilinear")

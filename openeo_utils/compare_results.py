@@ -127,7 +127,7 @@ def MSE(a, b):
 # tiff_path_oeo = "/home/emile/openeo/drought-indices/SPI/out-2024-02-21_22_40_39.195282/openEO_2020-01-01Z.tif"
 
 tiff_path_gmv = "/home/emile/Desktop/ToShareWithVito/CDI/Sample output/2021-09-01_CDI.tif"
-tiff_path_oeo = "/home/emile/openeo/drought-indices/CDI/out-2024-04-02_01_00_42.812426/openEO_2021-09-01Z.tif"
+tiff_path_oeo = "/home/emile/openeo/drought-indices/CDI/out-2024-04-03_17_42_51.706013/openEO_2021-09-01Z.tif"
 
 print(f"{tiff_path_gmv=}")
 print(f"{tiff_path_oeo=}")

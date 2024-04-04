@@ -7,7 +7,7 @@ spatial_extent = spatial_extent_south_africa
 temporal_extent = get_temporal_extent_from_argv(["2020-01-01", "2023-09-01"])
 
 band = "FAPAR"
-scale_factor = 0.004
+# scale_factor = 0.004 Not needed
 lc = connection.load_collection(
     "CGLS_FAPAR300_V1_GLOBAL",  # 300m resolution, [2014,present]
     temporal_extent=temporal_extent,
@@ -15,14 +15,18 @@ lc = connection.load_collection(
     bands=[band],
 )
 CGLS_FAPAR300_V1_GLOBAL_dc = (
-    lc.aggregate_temporal_period("month", reducer="mean")
+    lc
+    .aggregate_temporal_period("day", reducer="mean")  # Make weighted mean
+    .apply_dimension(dimension="t", process="array_interpolate_linear")
+    .aggregate_temporal_period("month", reducer="mean")
     .filter_temporal(temporal_extent)
     # Linearly interpolate missing values. To avoid protobuf error.
     .apply_dimension(
         dimension="t",
         process="array_interpolate_linear",
     )
-    * scale_factor
+    * 1.0
+    # * scale_factor
 )
 
 
@@ -66,8 +70,8 @@ def main(temporal_extent_argument):
     out_format = "GTiff"
     dc = FAPAR_anomaly_dc
     dc = dc.save_result(format=out_format)
-    # custom_execute_batch(dc, out_format=out_format, run_type="batch_job")
-    custom_execute_batch(CGLS_FAPAR300_V1_GLOBAL_dc, out_format=out_format, run_type="batch_job")
+    custom_execute_batch(dc, out_format=out_format, run_type="batch_job")
+    # custom_execute_batch(CGLS_FAPAR300_V1_GLOBAL_dc, out_format=out_format, run_type="batch_job")
 
 
 if __name__ == "__main__":
