@@ -98,7 +98,11 @@ def load_south_africa_shape() -> gpd.GeoDataFrame:
 
     geodata_polygon = geodata_polygon.loc[geodata_polygon.area > 0.0001]  # Remove tini islands
 
-    geodata_polygon = geodata_polygon.set_crs("EPSG:4326")
+    try:
+        geodata_polygon = geodata_polygon.set_crs("EPSG:4326")
+    except:
+        # EPSG:4326 is the default anyway
+        pass
     return geodata_polygon
 
 
@@ -204,12 +208,12 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_typ
         # with open(output_dir / "logs.json", "w") as f:
         #     json.dump(job.logs(), f, indent=2)  # too often timeout
 
-        os.system('spd-say "Program terminated"')  # vocal feedback
+        # os.system('spd-say "Program terminated"')  # vocal feedback
     except KeyboardInterrupt:
         # No audio when user manually stops program
         pass
     except:
-        os.system('spd-say "Program failed"')  # vocal feedback
+        # os.system('spd-say "Program failed"')  # vocal feedback
         raise
     finally:
         print("custom_execute_batch end time: " + str(datetime.datetime.now()))
