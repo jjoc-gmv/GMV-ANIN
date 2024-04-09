@@ -12,7 +12,9 @@ SPI_dc = SPI_dc.filter_temporal(temporal_extent)
 SPI_dc = SPI_dc.resample_spatial(resolution=resolution, projection=4326, method="bilinear")
 
 SPI_previous_month_dc = SPI_previous_month_dc.filter_temporal(temporal_extent)
-SPI_previous_month_dc = SPI_previous_month_dc.resample_spatial(resolution=resolution, projection=4326, method="bilinear")
+SPI_previous_month_dc = SPI_previous_month_dc.resample_spatial(
+    resolution=resolution, projection=4326, method="bilinear"
+)
 
 SMA_dc = SMA_dc.filter_temporal(temporal_extent)
 SMA_dc = SMA_dc.resample_spatial(resolution=resolution, projection=4326, method="bilinear")
@@ -52,7 +54,9 @@ def main(temporal_extent_argument):
 
 
 if __name__ == "__main__":
-    print("WARNING, this script is work in progress")
+    # job = openeo.rest.job.BatchJob(job_id=f"vito-j-2404082abce44e9b922cb3736b0fcce4", connection=connection)  # CDI
+    # output_dir = "/home/emile/openeo/drought-indices/CDI/out-test2/"
+    # job.get_results().download_files(output_dir)
     if len(sys.argv) < 3:
         raise Exception("Please provide start and end date as arguments")
     main(temporal_extent)

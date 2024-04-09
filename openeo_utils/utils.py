@@ -179,9 +179,7 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_typ
         print("output_dir=" + str(output_dir))
         datacube.print_json(file=output_dir / "process_graph.json", indent=2)
         print(str(output_dir.absolute()) + "/")
-        if run_type == "local":
-            os.system("python /home/emile/openeo/openeo-geopyspark-driver/tests/integrations/test_run_graph_locally.py " + str(output_dir / "process_graph.json"))
-        elif run_type == "sync":
+        if run_type == "sync":
             datacube.download(output_dir / (os.path.basename(parent_filename) + ".nc"))
         elif run_type == "batch_job":
             if job_options is None:
@@ -192,9 +190,7 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_typ
             job = datacube.create_job(
                 title=os.path.basename(parent_filename),
                 out_format=out_format,
-                # out_format="NetCDF",
                 description=job_description,
-                # filename_prefix=os.path.basename(parent_filename).replace(".py", ""),
                 job_options=job_options,
             )
             with open(output_dir / "job_id.txt", mode="w") as f:
@@ -202,6 +198,10 @@ def custom_execute_batch(datacube, job_options=None, out_format="GTiff", run_typ
                 f.write(datacube.connection.root_url + "\n")
             job.start_and_wait()
             job.get_results().download_files(output_dir)
+
+            links = job.get_results().get_metadata()["links"]
+            links_href = list(filter(lambda x: x["rel"] == "canonical", links))[0]["href"]
+            print(f"STAC results url: {links_href}")
         else:
             raise Exception("Invalid run_type: " + run_type)
 
