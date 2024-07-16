@@ -35,3 +35,4 @@ Format code:
 black --line-length 120 */*_openeo.py */*_UDF.py
 ```
 Example output files can be found here: https://gmvdrive.gmv.com/index.php/s/oLj4moSZ2Ez5G5P?path=%2F
+OpenEO development is moved to here: https://github.com/VitoTAP/ANIN-drought-indices
