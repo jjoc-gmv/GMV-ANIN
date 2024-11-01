@@ -26,9 +26,8 @@ The tools presented in this handbook were created as a result of a collaborative
 </div>
 
 ## Funding and Sponsorship
-The European Space Agency (ESA) created the EO Africa initiative (African Framework for Research, Innovation, Communities and Applications) to build an African-European R&D partnership to facilitate the sustainable adoption of Earth Observation and related space technology in Africa. This project is one of the four EO AFRICA' National Incubators' projects that investigate how sustainable agriculture and/or drought monitoring at a national scale can be achieved in the African continent by co-developing innovative EO-based solutions with African experts. 
+The European Space Agency (ESA) created the EO Africa initiative (African Framework for Research, Innovation, Communities and Applications) to build an African-European R&D partnership to facilitate the sustainable adoption of Earth Observation and related space technology in Africa. This project is one of the four EO AFRICA' National Incubators' projects that investigate how sustainable agriculture and/or drought monitoring at a national scale can be achieved in the African continent by co-developing innovative EO-based solutions with African experts.
 
 [![alt text](assets/Primary_Logos.JPG)](https://www.eoafrica-rd.org/){:target="_blank"}
-
 
 For more information on the ANIN South Africa Drought Monitoring Project, visit [https://eoafrica.drought-za.org/](https://eoafrica.drought-za.org/){:target="_blank"}.
