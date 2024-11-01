@@ -43,7 +43,7 @@ nav:
       - Installation: 'Installation.md'
 - Drought indices:
       - Running the Drought Indices Tools: 'drought_indices.md'
-      - Working in Jupyter Notebooks: 'JupyterNB.md'
+      # - Working in Jupyter Notebooks: 'JupyterNB.md'
       - Example Results: 'examples.md'
 - Specifications: 'theoretical_basis.md'
 - FAQ:
@@ -66,6 +66,7 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - admonition
+  - md_in_html
   - pymdownx.arithmatex:
       generic: true
   - footnotes
